@@ -1,0 +1,11 @@
+[project]
+name = "chainlit-llama-index-template"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chainlit>=2.4.201",
+    "llama-index>=0.12.25",
+    "llama-index-llms-openai>=0.3.25",
+]
