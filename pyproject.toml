@@ -5,12 +5,20 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "chainlit>=2.4.201",
-    "db-dtypes>=1.4.2",
+    "chainlit==2.5.5",
+    "fastembed>=0.4.2",
     "google-cloud-bigquery>=3.30.0",
-    "google-cloud-bigquery-storage>=2.29.1",
-    "llama-index>=0.12.25",
-    "llama-index-llms-openai>=0.3.25",
+    "google-cloud-bigquery-storage>=2.30.0",
+    "llama-index>=0.12.30",
     "loguru>=0.7.3",
+    "pandas>=2.2.3",
+    "qdrant-client>=1.12.1",
     "sqlparse>=0.5.3",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "ruff>=0.11.5",
 ]
