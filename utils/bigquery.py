@@ -24,6 +24,8 @@ class BigQueryHandler:
 
         if not credentials_path:
             raise ValueError("Please provide a path to the service account JSON file")
+        else:
+            log.success("Using credentials from: {}", credentials_path)
 
         self.project_id = project_id
         self.client = bigquery.Client(
@@ -67,7 +69,40 @@ class BigQueryHandler:
             _query = self.normalize_query(query)
             dataframe = self.client.query(_query).to_dataframe()
 
+            log.success(
+                "Successfully fetched data from BigQuery. Rows returned: {}",
+                len(dataframe),
+            )
             return pd.DataFrame(dataframe)
+
+        except GoogleAPIError as api_error:
+            log.error("Google API Error during data fetch: {}", api_error)
+            raise
+
+        except Exception as e:
+            log.exception("An unexpected error occurred during data fetch.")
+            raise
+
+    def fetch_bigquery_as_list(self, query: str) -> list:
+        """
+        Execute a query on a BigQuery table and return the results as a list of dictionaries.
+
+        Args:
+            query (str): The query to execute on the BigQuery table.
+
+        Returns:
+            list: List of dictionaries containing the query results.
+        """
+        try:
+            _query = self.normalize_query(query)
+            rows = self.client.query(_query).result()
+            result = [dict(row.items()) for row in rows]
+
+            log.success(
+                "Successfully fetched data from BigQuery. Rows returned: {}",
+                len(result),
+            )
+            return result
 
         except GoogleAPIError as api_error:
             log.error("Google API Error during data fetch: {}", api_error)
