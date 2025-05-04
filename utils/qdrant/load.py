@@ -31,7 +31,20 @@ class QdrantLoader(QdrantBase):
         vectors = list(self.embedder.embed(documents=texts, parallel=0))
         log.info("Embedding complete.")
 
-        payloads = df.drop(columns=[self.embedding_column]).to_dict(orient="records")
+        selected_columns = [
+            self.embedding_column,
+            "location_id",
+            "location_name",
+            "address",
+            "location_map",
+            "location_url",
+            "cuisine_list",
+            "price_range",
+            "city",
+        ]
+        payloads = df[selected_columns].to_dict(orient="records")
+        log.info(f"Loaded {len(payloads)} records from source.")
+        log.info(f"Upserting {len(payloads)} records to Qdrant...")
         points = [
             PointStruct(id=str(uuid.uuid4()), vector=vector, payload=payload)
             for vector, payload in zip(vectors, payloads)

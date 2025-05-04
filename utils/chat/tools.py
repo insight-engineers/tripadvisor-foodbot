@@ -1,112 +1,131 @@
-import os
-import base64
+from typing import Annotated, List, Literal
 
+import unidecode
 from llama_index.core.tools import FunctionTool
+from loguru import logger as log
 
-from utils.bigquery import BigQueryHandler
-from utils.chat.llm import core_llm_model, llm_settings
-from utils.qdrant.query import QdrantQuery
-
-qdrant_client_location = QdrantQuery(
-    qdrant_api_url=os.environ.get("QDRANT_API_URL"),
-    qdrant_api_key=os.environ.get("QDRANT_API_KEY"),
-    collection_name="tripadvisor_locations",
-)
-
-bigquery_client = BigQueryHandler(
-    project_id="tripadvisor-recommendations",
-    credentials_path=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sa.json"),
-)
+from utils.chat.client import bigquery_client, core_llm_model, qdrant_client_location
+from utils.chat.prompt import ENRICH_PROMPT
+from utils.helper import encode_url
 
 
-import json
-import os
-from typing import List
-
-
-def search_and_rank_restaurant(natural_query: str, price_range_filter=None, city_filter=None, top_k=5) -> List[str]:
+def candidate_generation_and_ranking(
+    english_natural_query: Annotated[
+        str, "Adjust to ensure grammatical correctness and clarity."
+    ],
+    price_range_filter: Literal["Cheap Eats", "Mid-range", "Fine Dining"] = None,
+    city_filter: Literal["Ha Noi", "Ho Chi Minh"] = None,
+) -> List[str]:
     """
-    This function returns top k restaurants that fit the user's needs. Ask the user if not enough information (like missing price, city,...) given. ASK ONCE BUT INFORMATIVE, GIVE EXAMPLES.
-
-    Params: (if listed specifically, it MUST be one of the options)
-        natural_query: Detected query from user, can be enriched or modified for better results. (MUST be in English, translated if needed, correct spelling if needed)
-        price_range_filter: [Cheap Eats, Mid-range, Fine Dining]
-        city_filter: [Ha Noi, Ho Chi Minh]
-
-    Returns:
-        List[str]: List of restaurant ids that match the user's query.
-
-    Rules:
-        - Input None to params if no information is given
-        - If user mentions number of restaurants, input top_k; otherwise, MUST skip this param
-        - MUST input the ids of the restaurants to the next function if this function runs successfully
+    Retrieves the top-K restaurants that match the user's query.
+    If key information is missing (e.g., price range, city), prompt the user for clarification.
+    Ensure the prompt is clear, concise, and provides examples.
+    Do not filter if the user does not provide information.
     """
+    log.info("Candidate generation using Qdrant")
+    candidate_limit = 10
+
     locations = qdrant_client_location.search_restaurants(
-        natural_query=natural_query,
-        top_k=top_k,
+        natural_query=unidecode.unidecode(english_natural_query),
+        candidate_limit=candidate_limit,
         price_range=price_range_filter,
         city=city_filter,
     )
 
+    log.info("Ranking restaurants using model")
+    # TODO: Add ranking logic here
+
     return [f"{loc['location_id']}" for loc in locations]
 
 
-def enrich_restaurant_recommendations(original_user_message: str, locations: List[str]) -> str:
+def enrich_restaurant_recommendations(
+    original_user_message: Annotated[
+        str, "original user message, concat if multiple messages in the conversation"
+    ],
+    locations: Annotated[List[str], "restaurant ids from the previous function"],
+) -> str:
     """
-    This function finalizes the restaurant recommendations by enriching the data with more information.
+    Enrich the restaurant recommendations with more information.
     ONLY use this function at the end of the pipeline.
-
-    Params:
-        original_user_message: The original user message, concat if multiple messages
-        locations: List of restaurant ids that got from the previous function
     """
     query = f"""
-    SELECT location_name, address, location_map, location_url, location_image_url, cuisine_list, price_range, location_overall_rate
+    SELECT location_name, address, location_map, location_url, image_url, cuisine_list, price_range, location_overall_rate
     FROM `tripadvisor-recommendations.fs_tripadvisor.fs_location`
     WHERE location_id IN ({", ".join(map(str, locations))})
     """
 
-    results = bigquery_client.fetch_bigquery_as_list(query)
+    query_result = bigquery_client.fetch_bigquery_as_list(query)
 
-    if not results:
-        return "No restaurant recommendations found."
+    if not query_result:
+        return "No restaurant recommendations found. Please try again with a different query."
+    else:
+        check_valid_value = lambda x: (
+            True if x is not None and str(x).strip() not in ["", "-1"] else False
+        )
+        query_result = [
+            {k: v for k, v in loc.items() if check_valid_value(v)}
+            for loc in query_result
+        ]
 
-    # using llm to make results more informative
+    restaurant_output = "\n".join(
+        [
+            f"### **{loc.get('location_name', '')}**\n"
+            + "".join(
+                [
+                    f"- 📍 {loc.get('address', '')}\n" if "address" in loc else "",
+                    (
+                        f"- ⭐️ {loc.get('location_overall_rate', '')}\n"
+                        if "location_overall_rate" in loc
+                        and str(loc.get("location_overall_rate")) != "-1"
+                        else ""
+                    ),
+                    (
+                        f"- 💸 {loc.get('price_range', '')}\n"
+                        if "price_range" in loc
+                        and loc.get("price_range") != "Not Defined"
+                        else ""
+                    ),
+                    (
+                        f"- [Google Maps]({encode_url(loc.get('location_map', ''))}) | [TripAdvisor]({encode_url(loc.get('location_url', ''))})\n"
+                        if "location_map" in loc and "location_url" in loc
+                        else ""
+                    ),
+                    (
+                        f"![{loc.get('location_name', '')}]({loc.get('image_url', '')}?w=800&h=500&s=1)\n"
+                        if "image_url" in loc
+                        else ""
+                    ),
+                ]
+            )
+            for loc in query_result
+        ]
+    )
+
     llm_context = [
         {
-            "role": "system",
-            "content": f"""
-                You are a restaurant assistant. You are giving the restaurant recommendations to the user based on the user message and the restaurant data in the JSON format.
-                
-                Rules that you MUST follow:
-                - Make the results more informative and engaging. Answer the user in a friendly and informative manner.
-                - Use friendly voice with emojis and fit the user personality.
-                - MUST NOT drop any restaurant from the JSON format. Refactor and utilize full information from the JSON format.
-                - MUST return the Markdown format. ONLY show image if the image URL is available.
-                - MUST answer the user in the language of the user.
-                """,
+            "role": "developer",
+            "content": ENRICH_PROMPT.format(restaurant_data=restaurant_output).strip(),
         },
         {
             "role": "user",
-            "content": [
-                {
-                    "type": "input_text",
-                    "text": original_user_message,
-                },
-                {
-                    "type": "input_text",
-                    "text": base64.b64encode(json.dumps(results).encode("utf-8")).decode("utf-8"),
-                },
-            ],
+            "content": original_user_message,
         },
     ]
 
-    llm_response = core_llm_model.responses.create(input=llm_context, **llm_settings)
-    return llm_response.output_text
+    llm_params = {
+        "messages": llm_context,
+        "model": "gpt-4o-mini",
+        "temperature": 0.15,
+        "max_tokens": 4096,
+    }
+
+    llm_response = core_llm_model.chat.completions.create(**llm_params)
+    llm_output = llm_response.choices[0].message.content
+    return llm_output
 
 
-search_and_rank_restaurant_tool = FunctionTool.from_defaults(
-    fn=search_and_rank_restaurant,
+candidate_generation_and_ranking_tool = FunctionTool.from_defaults(
+    fn=candidate_generation_and_ranking,
     return_direct=False,
 )
 enrich_restaurant_recommendations_tool = FunctionTool.from_defaults(

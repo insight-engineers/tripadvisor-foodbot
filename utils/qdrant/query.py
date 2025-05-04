@@ -11,7 +11,7 @@ class QdrantQuery(QdrantBase):
     def search_restaurants(
         self,
         natural_query: str,
-        top_k: int = 5,
+        candidate_limit: int = 5,
         price_range: str = None,
         city: str = None,
     ):
@@ -29,7 +29,7 @@ class QdrantQuery(QdrantBase):
             collection_name=self.collection_name,
             query_vector=vector,
             query_filter=query_filter,
-            limit=top_k,
+            limit=candidate_limit,
         )
 
         return [
@@ -39,12 +39,12 @@ class QdrantQuery(QdrantBase):
     def search_restaurant_by_review_id(
         self,
         review_id: str,
-        top_k: int = 5,
+        candidate_limit: int = 5,
     ):
         search_result = self.client.search(
             collection_name=self.collection_name,
             query_vector=[review_id],
-            limit=top_k,
+            limit=candidate_limit,
         )
 
         return [
@@ -53,7 +53,6 @@ class QdrantQuery(QdrantBase):
                 "address": hit.payload.get("address"),
                 "location_map": hit.payload.get("location_map"),
                 "location_url": hit.payload.get("location_url"),
-                "location_image_url": hit.payload.get("location_image_url"),
                 "cuisine_list": hit.payload.get("cuisine_list"),
                 "price_range": hit.payload.get("price_range"),
                 "location_overall_rate": hit.payload.get("location_overall_rate"),

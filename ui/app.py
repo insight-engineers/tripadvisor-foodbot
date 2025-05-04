@@ -7,15 +7,15 @@ import chainlit as cl
 import openai
 from dotenv import load_dotenv
 from llama_index.core import Settings
-from llama_index.core.agent import ReActAgent, AgentChatResponse
+from llama_index.core.agent import AgentChatResponse, ReActAgent
 from llama_index.core.callbacks import CallbackManager
-from llama_index.core.storage.chat_store import SimpleChatStore
 from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.storage.chat_store import SimpleChatStore
 
-from utils.chat.llm import agent_llm_model
+from utils.chat.client import agent_llm_model
 from utils.chat.tools import (
+    candidate_generation_and_ranking_tool,
     enrich_restaurant_recommendations_tool,
-    search_and_rank_restaurant_tool,
 )
 
 try:
@@ -38,7 +38,7 @@ async def start():
 
     agent = ReActAgent.from_tools(
         tools=[
-            search_and_rank_restaurant_tool,
+            candidate_generation_and_ranking_tool,
             enrich_restaurant_recommendations_tool,
         ],
         llm=agent_llm_model,

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "chainlit==2.5.5",
+    "db-dtypes>=1.4.2",
     "fastembed>=0.4.2",
     "google-cloud-bigquery>=3.30.0",
     "google-cloud-bigquery-storage>=2.30.0",
@@ -14,6 +15,7 @@ dependencies = [
     "pandas>=2.2.3",
     "qdrant-client>=1.12.1",
     "sqlparse>=0.5.3",
+    "unidecode>=1.4.0",
 ]
 
 [dependency-groups]
