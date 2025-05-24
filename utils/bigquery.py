@@ -112,9 +112,7 @@ class BigQueryHandler:
             log.exception("An unexpected error occurred during data fetch.")
             raise
 
-    def upload_parquet_to_bq(
-        self, file_path: str, full_table_id: str, write_disposition="WRITE_TRUNCATE"
-    ) -> None:
+    def upload_parquet_to_bq(self, file_path: str, full_table_id: str, write_disposition="WRITE_TRUNCATE") -> None:
         """
         Upload a Parquet file to a specified BigQuery table.
 
@@ -138,9 +136,7 @@ class BigQueryHandler:
             )
 
             with open(file_path, "rb") as file:
-                load_job = self.client.load_table_from_file(
-                    file, full_table_id, job_config=job_config
-                )
+                load_job = self.client.load_table_from_file(file, full_table_id, job_config=job_config)
 
             load_job.result()  # Wait for the job to complete.
             log.success(

@@ -18,7 +18,5 @@ qdrant_client_location = QdrantQuery(
 
 bigquery_client = BigQueryHandler(
     project_id="tripadvisor-recommendations",
-    credentials_path=os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sa.json"
-    ),
+    credentials_path=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sa.json"),
 )

@@ -59,9 +59,7 @@ class QdrantBase(ABC):
             self.client.get_collection(self.collection_name)
             log.info(f"Collection '{self.collection_name}' already exists.")
         except Exception:
-            log.info(
-                f"Collection '{self.collection_name}' does not exist. Creating it..."
-            )
+            log.info(f"Collection '{self.collection_name}' does not exist. Creating it...")
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config={"size": self.vector_size, "distance": "Cosine"},

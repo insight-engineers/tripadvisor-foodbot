@@ -1,4 +1,6 @@
+import pandas as pd
 from fastembed import TextEmbedding
+from loguru import logger as log
 
 from utils.qdrant.base import QdrantBase
 
@@ -7,55 +9,79 @@ class QdrantQuery(QdrantBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.embedder = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        self.selected_columns = [
+            "location_id",
+            "location_name",
+            "address",
+            "city",
+            "location_url",
+            "location_map",
+            "image_url",
+            "image_description",
+            "latitude",
+            "longitude",
+            "location_rank",
+            "location_overall_rate",
+            "review_count",
+            "review_count_scraped",
+            "price_range",
+            "cuisine_list",
+            "food_negative",
+            "food_positive",
+            "food_neutral",
+            "price_negative",
+            "price_positive",
+            "price_neutral",
+            "ambience_negative",
+            "ambience_positive",
+            "ambience_neutral",
+            "service_negative",
+            "service_positive",
+            "service_neutral",
+            "location_negative",
+            "location_positive",
+            "location_neutral",
+            "general_negative",
+            "general_positive",
+            "general_neutral",
+            "friend_type",
+            "solo_type",
+            "business_type",
+            "couple_type",
+            "family_type",
+        ]
 
     def search_restaurants(
         self,
         natural_query: str,
-        candidate_limit: int = 5,
-        price_range: str = None,
         city: str = None,
-    ):
+        limit: int = 10,
+    ) -> pd.DataFrame:
         vector = list(self.embedder.embed([natural_query]))[0]
 
         filters = []
-        if price_range:
-            filters.append({"key": "price_range", "match": {"value": price_range}})
         if city:
             filters.append({"key": "city", "match": {"value": city}})
 
-        query_filter = {"must": filters} if filters else None
-
+        query_filter = {
+            "must": filters,
+            "must_not": [{"key": "review_count", "match": {"value": 0}}],
+        }
         search_result = self.client.search(
             collection_name=self.collection_name,
             query_vector=vector,
             query_filter=query_filter,
-            limit=candidate_limit,
+            limit=limit,
+            with_payload=True,
+            with_vectors=True,
         )
 
-        return [
-            {"location_id": hit.payload.get("location_id")} for hit in search_result
-        ]
-
-    def search_restaurant_by_review_id(
-        self,
-        review_id: str,
-        candidate_limit: int = 5,
-    ):
-        search_result = self.client.search(
-            collection_name=self.collection_name,
-            query_vector=[review_id],
-            limit=candidate_limit,
-        )
-
-        return [
+        restaurant_list = [
             {
-                "location_name": hit.payload.get("location_name"),
-                "address": hit.payload.get("address"),
-                "location_map": hit.payload.get("location_map"),
-                "location_url": hit.payload.get("location_url"),
-                "cuisine_list": hit.payload.get("cuisine_list"),
-                "price_range": hit.payload.get("price_range"),
-                "location_overall_rate": hit.payload.get("location_overall_rate"),
+                **{key: hit.payload.get(key) for key in self.selected_columns},
+                "query_matching_score": hit.score,
             }
             for hit in search_result
         ]
+
+        return pd.DataFrame(restaurant_list)

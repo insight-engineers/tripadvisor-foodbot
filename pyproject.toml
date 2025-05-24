@@ -1,21 +1,25 @@
 [project]
-name = "chainlit-llama-index-template"
+name = "tripadvisor-foodbot"
 version = "0.1.0"
-description = "Add your description here"
+description = "TripAdvisor Food Bot"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "chainlit==2.5.5",
     "db-dtypes>=1.4.2",
     "fastembed>=0.4.2",
     "google-cloud-bigquery>=3.30.0",
     "google-cloud-bigquery-storage>=2.30.0",
     "llama-index>=0.12.30",
     "loguru>=0.7.3",
+    "numba>=0.61.2",
     "pandas>=2.2.3",
     "qdrant-client>=1.12.1",
+    "scikit-learn>=1.6.1",
     "sqlparse>=0.5.3",
+    "streamlit>=1.45.1",
     "unidecode>=1.4.0",
+    "uuid>=1.30",
+    "watchdog>=6.0.0",
 ]
 
 [dependency-groups]
@@ -24,3 +28,6 @@ dev = [
     "isort>=6.0.1",
     "ruff>=0.11.5",
 ]
+
+[tool.ruff]
+line-length = 120
