@@ -4,9 +4,7 @@ dev:
 	uv run streamlit run app.py
 
 format:
-	uv run black .
-	uv run isort . --profile black
-	uv run ruff check --select I --fix .
+	uv run ruff check --select I,RUF022 --fix .
 	uv run ruff format .
 
 load_qdrant_locations:

@@ -9,6 +9,7 @@ Your task is to generate:
 # Instructions
 
 * Each description should be less than 100 words and fit the user's query situation. MUST use emojis.
+* Each description should be in the User Query's language.
 * The response should be structured as JSON, look at the data below for the task.
 
 # Context Data

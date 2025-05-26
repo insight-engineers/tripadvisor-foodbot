@@ -26,7 +26,7 @@ class RestaurantsFinalized(BaseModel):
 
 def candidate_generation_and_ranking(
     english_natural_query: str,
-    city_filter: Literal["Ha Noi", "Ho Chi Minh"] = None,
+    city_filter: Literal["Ha Noi", "Ho Chi Minh", "Whatever"] = "Whatever",
     kwargs_dict: Dict[str, Any] = None,
 ) -> List[str]:
     """
@@ -37,6 +37,8 @@ def candidate_generation_and_ranking(
     log.info("Candidate generation using Qdrant")
     top_k = 5
     decoded_query = unidecode.unidecode(english_natural_query)
+    if city_filter == "Whatever":
+        city_filter = None
     locations_with_query_matching_score = qdrant_client_location.search_restaurants(
         natural_query=decoded_query, city=city_filter, limit=500
     )
@@ -82,7 +84,16 @@ def candidate_generation_and_ranking(
     )
 
     # convert to list of dict and then get location_id from that
-    location_top_k = location_with_electre_rank[:top_k]
+    location_top_k = location_with_electre_rank[:top_k][
+        [
+            "location_id",
+            "location_name",
+            "ambience_score",
+            "food_score",
+            "price_score",
+            "service_score",
+        ]
+    ]
     print(location_top_k)
     location_with_electre_rank = location_top_k.to_dict("records")
     return [loc["location_id"] for loc in location_with_electre_rank]
@@ -149,7 +160,6 @@ def enrich_restaurant_recommendations(
         ).model_dump()
         if completion.choices[0].message.parsed:
             restaurant_description = completion.choices[0].message.parsed.model_dump()
-            print("Restaurant description: ", restaurant_description)
         elif completion.choices[0].message.refusal:
             restaurant_description = unable_response
         else:

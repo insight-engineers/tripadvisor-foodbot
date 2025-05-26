@@ -40,12 +40,8 @@ class StreamlitStatusCallback(BaseCallbackHandler):
         if "status" in st.session_state:
             try:
                 if event_type == CBEventType.AGENT_STEP:
-                    st.session_state.status.update(
-                        label="Agent started processing 🔄",
-                        state="running",
-                        expanded=True,
-                    )
-                    st.session_state.progress_bar.progress(30)
+                    st.session_state.status.update(label="Agent started processing 🔄", state="running")
+                    st.session_state.progress_bar.progress(10)
                 elif event_type == CBEventType.FUNCTION_CALL:
                     self._current_tool_name = (
                         payload.get(EventPayload.TOOL).name
@@ -55,10 +51,9 @@ class StreamlitStatusCallback(BaseCallbackHandler):
                     st.session_state.status.update(
                         label=f"Calling tool: {self._current_tool_name} 🔄",
                         state="running",
-                        expanded=True,
                     )
             except Exception as e:
-                st.session_state.status.update(label=f"Error in callback: {str(e)}", state="error", expanded=True)
+                st.session_state.status.update(label=f"Error in callback: {str(e)}", state="error")
 
     def on_event_end(
         self,
@@ -70,22 +65,14 @@ class StreamlitStatusCallback(BaseCallbackHandler):
         if "status" in st.session_state:
             try:
                 if event_type == CBEventType.AGENT_STEP:
-                    st.session_state.status.update(
-                        label="Agent has completed processing ✅",
-                        state="complete",
-                        expanded=True,
-                    )
+                    st.session_state.status.update(label="Agent has completed processing ✅", state="complete")
                     st.session_state.progress_bar.progress(90)
                 elif event_type == CBEventType.FUNCTION_CALL:
                     tool_name = self._current_tool_name if self._current_tool_name else "Unknown tool"
-                    st.session_state.status.update(
-                        label=f"Tool {tool_name} completed ✅",
-                        state="complete",
-                        expanded=True,
-                    )
+                    st.session_state.status.update(label=f"Tool {tool_name} completed ✅", state="complete")
                     st.session_state.progress_bar.progress(60)
             except Exception as e:
-                st.session_state.status.update(label=f"Error in callback: {str(e)}", state="error", expanded=True)
+                st.session_state.status.update(label=f"Error in callback: {str(e)}", state="error")
             finally:
                 if event_type == CBEventType.FUNCTION_CALL:
                     self._current_tool_name = None  # Reset after use
@@ -103,22 +90,6 @@ user_avatar = "👤"
 
 # --- Set page configuration ---
 st.set_page_config(page_title="TripAdvisor Chatbot", page_icon=assistant_avatar, layout="centered")
-st.markdown(
-    """
-<style>
-.stChatInput {
-    margin-top: 20px;
-    transition: all 0.3s ease;
-}
-
-.stChatInput:focus {
-    transform: translateY(-10px) !important;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1) !important;
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
 
 # --- Initialize agent with callback ---
 if "agent" not in st.session_state:
