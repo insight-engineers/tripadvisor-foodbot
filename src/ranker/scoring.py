@@ -1,17 +1,16 @@
 import pandas as pd
-from loguru import logger as log
 
-from utils.helper import haversine_distance
+from src.helper.utils import haversine_distance
 
 
 def compute_criterion_score(positive: pd.Series, negative: pd.Series) -> pd.Series:
     """
     Compute the criterion score based on the given positive and negative values.
     """
-    # case 1: More positive than negative |C+| > |C-|
+    # case 1: more positive than negative |C+| > |C-|
     more_positive = (1 - negative / positive).where(positive > negative)
 
-    # case 2: More negative than positive |C+| > |C-|
+    # case 2: more negative than positive |C+| > |C-|
     more_negative = (positive / negative - 1).where(positive < negative)
 
     # default to 0 when equal or both are zero

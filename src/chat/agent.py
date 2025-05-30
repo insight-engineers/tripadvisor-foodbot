@@ -40,7 +40,6 @@ from llama_index.core.memory import BaseMemory
 from llama_index.core.objects.base import ObjectRetriever
 from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool, ToolOutput
-from llama_index.core.tools.calling import call_tool
 from llama_index.core.tools.types import ToolMetadata
 from loguru import logger as log
 

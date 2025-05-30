@@ -1,16 +1,16 @@
-import re
 from typing import Annotated, Any, Dict, List, Literal
 
 import unidecode
 from llama_index.core.tools import FunctionTool
 from loguru import logger as log
 from pydantic import BaseModel
+from tabulate import tabulate
 
-from ranker.electre_iii import build_electre_iii
-from ranker.scoring import compute_distance_score, compute_normalized_criterion_score
-from utils.chat.client import bigquery_client, core_llm_model, qdrant_client_location
-from utils.chat.prompt import ENRICH_PROMPT
-from utils.helper import encode_url
+from src.chat.client import bigquery_client, core_llm_model, qdrant_client_location
+from src.chat.prompt import ENRICH_PROMPT
+from src.helper.utils import encode_url
+from src.ranker.electre_iii import build_electre_iii
+from src.ranker.scoring import compute_distance_score, compute_normalized_criterion_score
 
 
 class RestaurantDescription(BaseModel):
@@ -54,15 +54,6 @@ def candidate_generation_and_ranking(
     log.info(f"User preferences: {user_preferences}")
     log.info(f"Distance preference: {distance_preference}")
 
-    if distance_preference:
-        log.info("User has distance preference. Computing distance score...")
-        locations_with_score = compute_distance_score(
-            locations_with_score,
-            distance_preference["max_distance"],
-            distance_preference["user_lat"],
-            distance_preference["user_long"],
-        )
-
     thresholds = {
         "food_score": {"q": 0.05, "p": 0.10, "v": 0.20},
         "ambience_score": {"q": 0.05, "p": 0.10, "v": 0.20},
@@ -72,29 +63,25 @@ def candidate_generation_and_ranking(
     }
 
     if distance_preference:
+        log.info("User has distance preference. Computing distance score...")
+        locations_with_score = compute_distance_score(
+            locations_with_score,
+            kwargs_dict.get("distance_km"),
+            kwargs_dict.get("user_lat"),
+            kwargs_dict.get("user_long"),
+        )
+        user_preferences["distance_score"] = 0.05
         thresholds["distance_score"] = {"q": 0.05, "p": 0.10, "v": 0.20}
 
     user_preferences["query_matching_score"] = 0.5
     location_with_electre_rank = build_electre_iii(locations_with_score, user_preferences, thresholds)
 
-    log.success(
-        "Successfully ranked restaurants using ELECTRE III. Found {} restaurants, get {} recommendations",
-        len(location_with_electre_rank),
-        top_k,
-    )
+    log.success(f"Successfully ranked restaurants using ELECTRE III. Get {top_k} recommendations")
+    score_columns = [col for col in location_with_electre_rank.columns if col.endswith("_score")]
+    selected_columns = ["location_id", "location_name"] + score_columns
+    location_top_k = location_with_electre_rank[selected_columns].head(top_k)
 
-    # convert to list of dict and then get location_id from that
-    location_top_k = location_with_electre_rank[:top_k][
-        [
-            "location_id",
-            "location_name",
-            "ambience_score",
-            "food_score",
-            "price_score",
-            "service_score",
-        ]
-    ]
-    print(location_top_k)
+    print(tabulate(location_top_k, headers="keys", tablefmt="psql"))
     location_with_electre_rank = location_top_k.to_dict("records")
     return [loc["location_id"] for loc in location_with_electre_rank]
 

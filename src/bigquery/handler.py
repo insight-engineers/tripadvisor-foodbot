@@ -7,9 +7,7 @@ from loguru import logger as log
 
 
 class BigQueryHandler:
-    """
-    BigQueryHandler for interacting with BigQuery, including table management, data upload, and fetching queries.
-    """
+    """BigQueryHandler for interacting with BigQuery, including table management, data upload, and fetching queries."""
 
     def __init__(self, project_id: str, credentials_path: str = None):
         """
@@ -70,7 +68,7 @@ class BigQueryHandler:
             dataframe = self.client.query(_query).to_dataframe()
 
             log.success(
-                "Successfully fetched data from BigQuery. Rows returned: {}",
+                "Successfully fetched data from src.bigquery. Rows returned: {}",
                 len(dataframe),
             )
             return pd.DataFrame(dataframe)
@@ -79,7 +77,7 @@ class BigQueryHandler:
             log.error("Google API Error during data fetch: {}", api_error)
             raise
 
-        except Exception as e:
+        except Exception:
             log.exception("An unexpected error occurred during data fetch.")
             raise
 
@@ -99,7 +97,7 @@ class BigQueryHandler:
             result = [dict(row.items()) for row in rows]
 
             log.success(
-                "Successfully fetched data from BigQuery. Rows returned: {}",
+                "Successfully fetched data from src.bigquery. Rows returned: {}",
                 len(result),
             )
             return result
@@ -108,7 +106,7 @@ class BigQueryHandler:
             log.error("Google API Error during data fetch: {}", api_error)
             raise
 
-        except Exception as e:
+        except Exception:
             log.exception("An unexpected error occurred during data fetch.")
             raise
 
@@ -152,7 +150,7 @@ class BigQueryHandler:
         except GoogleAPIError as api_error:
             log.error("Google API Error during file upload: {}", api_error)
             raise
-        except Exception as e:
+        except Exception:
             log.exception("An unexpected error occurred during file upload.")
             raise
 
@@ -179,6 +177,6 @@ class BigQueryHandler:
         except GoogleAPIError as api_error:
             log.error("Google API Error during table creation: {}", api_error)
             raise
-        except Exception as e:
+        except Exception:
             log.exception("An unexpected error occurred during table creation.")
             raise

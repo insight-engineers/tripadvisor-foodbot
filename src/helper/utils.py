@@ -1,7 +1,19 @@
+import os
 import time
 from math import atan2, cos, radians, sin, sqrt
 
 import requests
+from dotenv import load_dotenv
+
+from src.chat.prompt import WELCOME_PROMPT
+
+
+def load_dotenv_file(dotenv_path):
+    """Load environment variables from a .env file."""
+    if os.path.exists(dotenv_path):
+        load_dotenv(dotenv_path=dotenv_path)
+    else:
+        raise FileNotFoundError(f"{dotenv_path} does not exist.")
 
 
 def encode_url(url_string: str) -> str:
@@ -18,6 +30,11 @@ def generate_streaming_response(response: str):
     for word in response:
         yield word
         time.sleep(0.005)
+
+
+def get_welcome_message(name: str = "food lover") -> str:
+    """Returns a welcome message for the chatbot."""
+    return WELCOME_PROMPT.format(name=name)
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):

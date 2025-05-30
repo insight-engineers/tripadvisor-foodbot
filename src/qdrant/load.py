@@ -5,8 +5,8 @@ from fastembed import TextEmbedding
 from loguru import logger as log
 from qdrant_client.models import PointStruct
 
-from utils.bigquery import BigQueryHandler
-from utils.qdrant.base import QdrantBase
+from src.bigquery.handler import BigQueryHandler
+from src.qdrant.base import QdrantBase
 
 
 class QdrantLoader(QdrantBase):

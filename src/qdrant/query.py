@@ -1,8 +1,7 @@
 import pandas as pd
 from fastembed import TextEmbedding
-from loguru import logger as log
 
-from utils.qdrant.base import QdrantBase
+from src.qdrant.base import QdrantBase
 
 
 class QdrantQuery(QdrantBase):

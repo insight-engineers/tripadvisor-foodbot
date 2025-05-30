@@ -53,7 +53,11 @@ The application is built on a modern tech stack:
 
 4. **Launch Development Server:**
    ```bash
-   uv run streamlit run app.py
+   uv run streamlit run _streamlit.py
+
+   # or
+
+   make dev
    ```
 
 ## Project Dependencies
@@ -64,7 +68,6 @@ The application is built on a modern tech stack:
 - `google-cloud-bigquery>=3.30.0`: BigQuery data operations
 - `streamlit>=1.45.1`: Web interface framework
 - `pandas>=2.2.3`: Data manipulation and analysis
-- `scikit-learn>=1.6.1`: Machine learning utilities
 
 ### Development Dependencies
 - `black>=25.1.0`: Code formatting

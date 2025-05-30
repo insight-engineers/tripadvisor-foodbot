@@ -3,7 +3,6 @@ from typing import Dict
 import numba as nb
 import numpy as np
 import pandas as pd
-from loguru import logger as log
 from scipy.stats import rankdata
 
 

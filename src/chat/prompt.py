@@ -19,7 +19,7 @@ Your task is to generate:
 
 WELCOME_PROMPT = """
 <div style='color: #00af87; font-weight:bold;'>
-Welcome to the TripAdvisor Chatbot! 🎉
+Hi {name}, welcome to the TripAdvisor Chatbot! 🎉
 </div>
 Discover the best dining spots in <b>Ho Chi Minh City</b> and <b>Hanoi</b>! 🍽️ <br/>
 🍲🍹 Bon appétit and happy exploring! 🥳🎉 <br/>
