@@ -1,97 +1,119 @@
 # TripAdvisor Foodbot
 
+![python](https://img.shields.io/badge/python-3.11-blue?style=for-the-badge) ![package-manager](https://img.shields.io/badge/package_manager-uv-green?style=for-the-badge) ![GitHub last commit](https://img.shields.io/github/last-commit/insight-engineers/tripadvisor-foodbot?style=for-the-badge)
+
 ## Overview
-TripAdvisor Foodbot is an advanced AI-powered chatbot designed to revolutionize the way users discover dining spots in Vietnamese cities like Ho Chi Minh City and Hanoi. By combining state-of-the-art language models, vector search, and comprehensive restaurant data, the chatbot delivers highly personalized restaurant recommendations through an intuitive conversational interface.
 
-## Key Features
-- **Intelligent Restaurant Discovery**: Advanced search and recommendation system powered by LlamaIndex and OpenAI
-- **Context-Aware Conversations**: Maintains chat history for more relevant and personalized recommendations
-- **Real-time Data Processing**: Utilizes Google BigQuery for efficient large-scale data operations
-- **Vector-Based Search**: Implements Qdrant for fast and accurate similarity search of restaurant data
-- **User-Friendly Interface**: Built with Streamlit for a seamless chat experience
-- **Multi-criteria Recommendations**: Considers cuisine, price range, location, and user preferences
+Restaurant recommendation system implementing **RAG (Retrieval-Augmented Generation)** architecture with **vector search** and **multi-criteria decision analysis (MCDA - ELECTRE III)**. Built on LlamaIndex for agent orchestration, Qdrant for vector storage, and BigQuery for data operations.
 
-## Architecture
-The application is built on a modern tech stack:
-- **Frontend**: Streamlit for an interactive web interface
-- **Language Model**: OpenAI for natural language understanding
-- **Vector Database**: Qdrant for efficient similarity search
-- **Data Storage**: Google BigQuery for large-scale data management
-- **Embedding**: FastEmbed for high-performance text embedding
-- **Agent Framework**: LlamaIndex for structured conversation management
+## Core Components
+- **Vector Search**: Qdrant with FastEmbed for dense retrieval
+- **MCDA Engine**: ELECTRE III implementation for ranking restaurants
+- **LLM Integration**: OpenAI API with streaming response and generate final natural response
+- **Data Layer**: BigQuery for structured data + Qdrant collections
+- **Agent Framework**: LlamaIndex with custom tools and callbacks
 
-## Setup and Development Guide
+## Technical Implementation
 
-### Prerequisites
-- Python 3.11+ with `uv` package manager
-- [Google Cloud Platform](https://cloud.google.com/) account with BigQuery enabled
-- [OpenAI API Key](https://openai.com/) for language model access
-- [Qdrant Cloud](https://qdrant.tech/) account for vector search capabilities
+### Vector Search Pipeline
 
-### Development Environment Setup
+- FastEmbed for dense embeddings generation
+- Qdrant collections for restaurant vectors
+- Hybrid search combining semantic and metadata filtering
 
-1. **Verify Python Environment:**
-   ```bash
-   python --version  # Should be 3.11 or higher
-   uv --version     # Ensure uv is installed
-   ```
+### MCDA Implementation
 
-2. **Install Dependencies:**
-   ```bash
-   uv sync          # Installs all production dependencies
-   ```
+- **ELECTRE III** algorithm for restaurant ranking
+- Custom concordance/discordance thresholds
+- Multi-criteria evaluation:
+  - Food quality (delicious, fresh, etc.)
+  - Price sensitivity (affordable, expensive, etc.)
+  - Ambience (quiet, cozy, etc.)
+  - Service (friendly, fast, polite, etc.)
+  - Distance to user location (using GPS)
+  - Query matching (using `cosine similarity`)
+  - Review sentiment (positive, negative, etc.)
 
-3. **Configure Environment Variables:**
-   Create a `.env` file in the project root:
-   ```bash
-   OPENAI_API_KEY=your_openai_api_key
-   QDRANT_API_URL=your_qdrant_api_url
-   QDRANT_API_KEY=your_qdrant_api_key
-   ```
+> [!IMPORTANT]
+> Because **ELECTRE III** is a **decision analysis** algorithm calculated based on lots of matrix operations, it takes a lots of time to rank the restaurants with `numpy`. To improve the performance for better UX, we use `numba` to speed up the ranking process by compiling the `numpy`-based functions with `njit` (`@njit` - this is an alias for `@jit(nopython=True)`). This will make our `python` numpy-based functions run with near-C speed.
 
-   Put the service account key file `sa.json` in the root directory of the project.
+### Repository Structure
 
-4. **Launch Development Server:**
-   ```bash
-   uv run streamlit run _streamlit.py
+```bash
+src/
+├── bigquery/    # BigQuery operations and data handlers
+├── chat/        # LlamaIndex agent implementation
+├── helper/      # Utility functions
+├── qdrant/      # Vector DB operations
+├── ranker/      # ELECTRE III implementation
+└── s3/          # S3 client for asset storage (just use for user storage)
+```
 
-   # or
+### Agent Implementation - `chat` directory
 
-   make dev
-   ```
+- LlamaIndex RAG implementation
+- Custom tools for:
+  - `candidate_generation_and_ranking`: generate candidate restaurants and rank them using MCDA
+  - `enrich_restaurant_recommendations`: enrich the restaurant recommendations with more information, generate final natural response
+- Streaming response handlers for tools callbacks
+- Context management with chat history
 
-## Project Dependencies
-### Core Dependencies
-- `llama-index>=0.12.30`: Agent framework and conversation management
-- `fastembed>=0.4.2`: Efficient text embedding generation
-- `qdrant-client>=1.12.1`: Vector database client
-- `google-cloud-bigquery>=3.30.0`: BigQuery data operations
-- `streamlit>=1.45.1`: Web interface framework
-- `pandas>=2.2.3`: Data manipulation and analysis
+## Development Setup
 
-### Development Dependencies
-- `black>=25.1.0`: Code formatting
-- `isort>=6.0.1`: Import sorting
-- `ruff>=0.11.5`: Fast Python linter
+### Requirements
 
-## Features in Detail
-1. **Conversational Interface**
-   - Natural language understanding
-   - Context-aware responses
-   - Streaming response generation
-   - Chat history management
+- `python ~= 3.11`
+- `uv` package manager
+- GCP account with BigQuery: [GCP Console](https://console.cloud.google.com/)
+- OpenAI API key: [OpenAI Console](https://platform.openai.com/)
+- Qdrant Cloud instance: [Qdrant Console](https://cloud.qdrant.io/)
+- AWS S3 (or alternative storage service using S3 API)
 
-2. **Restaurant Recommendations**
-   - Personalized suggestions based on user preferences
-   - Location-aware recommendations
-   - Multi-criteria filtering
-   - Real-time data updates
+### Quick Start
 
-3. **Data Processing**
-   - Efficient vector search for similar restaurants
-   - Large-scale data querying
-   - Real-time data enrichment
-   - Contextual information retrieval
+1. Install dependencies with `uv`
+
+```bash
+uv sync
+```
+
+2. Place GCP service account key and copy `.env.template` to `.env`
+
+```bash
+cp sa.json ./
+cp .env.template .env
+```
+
+
+> [!NOTE]
+> The `sa.json` is the credential file of the GCP service account. If not have, the BigQuery operations will not work.
+
+3. Fill in the values in `.env`
+
+```bash
+OPENAI_API_KEY=your-api-key
+QDRANT_API_KEY=your-api-key
+QDRANT_API_URL=your-api-url
+AWS_REGION_NAME=your-region
+AWS_BUCKET_NAME=your-bucket-name
+AWS_BUCKET_ENDPOINT_URL=your-bucket-endpoint
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+```
+
+4. Start development server
+
+```bash
+make dev
+```
+
+### Dependencies
+
+Core: `llama-index>=0.12.30`, `fastembed>=0.4.2`, `qdrant-client>=1.12.1`
+Data: `google-cloud-bigquery>=3.30.0`, `pandas>=2.2.3`
+UI: `streamlit>=1.45.1`
+Dev: `black>=25.1.0`, `isort>=6.0.1`, `ruff>=0.11.5`
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
