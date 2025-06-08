@@ -1,3 +1,4 @@
+import chainlit as cl
 import streamlit as st
 from llama_index.core.callbacks.base import BaseCallbackHandler
 from llama_index.core.callbacks.schema import CBEventType, EventPayload
@@ -57,8 +58,19 @@ class StreamlitStatusCallback(BaseCallbackHandler):
                 if event_type == CBEventType.FUNCTION_CALL:
                     self._current_tool_name = None  # Reset after use
 
-    def start_trace(self, trace_id: str = None) -> None:
+    def _noop(self, *args, **kwargs):
         pass
 
-    def end_trace(self, trace_id: str = None, trace_map: dict = None) -> None:
+    start_trace = _noop
+    end_trace = _noop
+
+
+class ChainlitStatusCallback(cl.LlamaIndexCallbackHandler):
+    """Chainlit callback handler for LlamaIndex events."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # No additional initialization needed
+        # This class is used to integrate with Chainlit's callback system
+        # and does not require any specific implementation.
         pass

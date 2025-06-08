@@ -1,3 +1,5 @@
+import time
+
 import pandas as pd
 from fastembed import TextEmbedding
 
@@ -56,31 +58,35 @@ class QdrantQuery(QdrantBase):
         city: str = None,
         limit: int = 10,
     ) -> pd.DataFrame:
-        vector = list(self.embedder.embed([natural_query]))[0]
+        try:
+            vector = list(self.embedder.embed([natural_query]))[0]
+            filters = []
+            if city:
+                filters.append({"key": "city", "match": {"value": city}})
 
-        filters = []
-        if city:
-            filters.append({"key": "city", "match": {"value": city}})
-
-        query_filter = {
-            "must": filters,
-            "must_not": [{"key": "review_count", "match": {"value": 0}}],
-        }
-        search_result = self.client.search(
-            collection_name=self.collection_name,
-            query_vector=vector,
-            query_filter=query_filter,
-            limit=limit,
-            with_payload=True,
-            with_vectors=True,
-        )
-
-        restaurant_list = [
-            {
-                **{key: hit.payload.get(key) for key in self.selected_columns},
-                "query_matching_score": hit.score,
+            query_filter = {
+                "must": filters,
+                "must_not": [{"key": "review_count", "match": {"value": 0}}],
             }
-            for hit in search_result
-        ]
+            search_result = self.client.search(
+                collection_name=self.collection_name,
+                query_vector=vector,
+                query_filter=query_filter,
+                limit=limit,
+                with_payload=True,
+                with_vectors=True,
+            )
 
-        return pd.DataFrame(restaurant_list)
+            restaurant_list = [
+                {
+                    **{key: hit.payload.get(key) for key in self.selected_columns},
+                    "query_matching_score": hit.score,
+                }
+                for hit in search_result
+            ]
+
+            return pd.DataFrame(restaurant_list)
+        except Exception as e:
+            raise RuntimeError(f"Error searching restaurants: {e}")
+        finally:
+            time.sleep(1.5)  # Respect Qdrant rate limits

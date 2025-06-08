@@ -36,21 +36,24 @@ def candidate_generation_and_ranking(
     """
     log.info("Candidate generation using Qdrant")
     top_k = 5
+    candidate_limit = top_k * 100
     decoded_query = unidecode.unidecode(english_natural_query)
-    if city_filter == "Whatever":
-        city_filter = None
-    locations_with_query_matching_score = qdrant_client_location.search_restaurants(
-        natural_query=decoded_query, city=city_filter, limit=500
-    )
+
+    search_restaurants_kwargs = {"natural_query": decoded_query, "limit": candidate_limit}
+
+    if city_filter in ["Ha Noi", "Ho Chi Minh"]:
+        search_restaurants_kwargs["city"] = city_filter
+
+    locations_with_query_matching_score = qdrant_client_location.search_restaurants(**search_restaurants_kwargs)
+    log.info("Successfully retrieved candidate restaurants from Qdrant with cosine similarity score")
 
     criteria = ["food", "ambience", "price", "service"]
     locations_with_score = compute_normalized_criterion_score(locations_with_query_matching_score, criteria)
 
     log.success("Successfully computed normalized criterion scores")
-    log.info("Ranking restaurants using ELECTRE III")
-
+    log.info("Checking user preferences and distance preference")
     user_preferences = kwargs_dict.get("user_preferences", {})
-    distance_preference = kwargs_dict.get("distance_preference", {})
+    distance_preference = user_preferences.get("distance_preference", False)
     log.info(f"User preferences: {user_preferences}")
     log.info(f"Distance preference: {distance_preference}")
 
@@ -66,14 +69,18 @@ def candidate_generation_and_ranking(
         log.info("User has distance preference. Computing distance score...")
         locations_with_score = compute_distance_score(
             locations_with_score,
-            kwargs_dict.get("distance_km"),
-            kwargs_dict.get("user_lat"),
-            kwargs_dict.get("user_long"),
+            user_preferences.get("distance_km"),
+            user_preferences.get("user_lat"),
+            user_preferences.get("user_long"),
         )
         user_preferences["distance_score"] = 0.05
         thresholds["distance_score"] = {"q": 0.05, "p": 0.10, "v": 0.20}
 
     user_preferences["query_matching_score"] = 0.5
+    user_preferences = {
+        key: value for key, value in user_preferences.items() if key in thresholds and isinstance(value, (int, float))
+    }
+    log.info("Ranking restaurants using ELECTRE III")
     location_with_electre_rank = build_electre_iii(locations_with_score, user_preferences, thresholds)
 
     log.success(f"Successfully ranked restaurants using ELECTRE III. Get {top_k} recommendations")

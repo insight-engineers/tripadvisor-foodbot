@@ -1,12 +1,17 @@
 import os
 
+import dotenv
+
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(dotenv_path):
+    dotenv.load_dotenv(dotenv_path=dotenv_path)
+
 import streamlit as st
 import streamlit_authenticator as st_auth
 import streamlit_geolocation as st_geolocation
 import yaml
 
 from src.helper.utils import generate_streaming_response, get_welcome_message
-from src.s3.client import S3Client
 
 # --- Variables setup ---
 assistant_avatar = "public/favicon.png"
@@ -26,9 +31,11 @@ def streamlit_main(page_title: str = "TripAdvisor Chatbot"):
     st.set_page_config(page_title=page_title, page_icon="public/favicon.png", layout="centered")
 
     # --- Initialize S3 client ---
-    if "s3_client" not in st.session_state:
+    if "s3_client" not in st.session_state and not st.session_state.get("skip_agent_init"):
         try:
-            st.session_state.s3_client = S3Client(bucket_name=os.getenv("AWS_BUCKET_NAME"))
+            from src.main import s3_client
+
+            st.session_state.s3_client = s3_client
         except Exception as e:
             st.error(f"Error initializing S3 client: {str(e)}")
             st.stop()
@@ -62,7 +69,9 @@ def streamlit_main(page_title: str = "TripAdvisor Chatbot"):
             from src.main import generate_foodbot_agent
 
             st.session_state.skip_agent_init = True  # prevent re-initialization
-            st.session_state.agent = generate_foodbot_agent(token_limit=4096, verbose=True)
+            st.session_state.agent = generate_foodbot_agent(
+                chat_store_token_limit=4096, verbose=True, callback="streamlit"
+            )
             st.session_state.messages = []
         except Exception as e:
             st.error(f"Error initializing agent: {str(e)}")
@@ -236,10 +245,10 @@ def streamlit_main(page_title: str = "TripAdvisor Chatbot"):
                 params_chat = {"user_preferences": st.session_state.user_preferences}
                 if st.session_state.distance_preference:
                     if gps_location and gps_location.get("latitude") and gps_location.get("longitude"):
-                        params_chat["distance_preference"] = True
-                        params_chat["distance_km"] = st.session_state.distance_km
-                        params_chat["user_lat"] = gps_location["latitude"]
-                        params_chat["user_long"] = gps_location["longitude"]
+                        params_chat["user_preferences"]["distance_preference"] = True
+                        params_chat["user_preferences"]["distance_km"] = st.session_state.distance_km
+                        params_chat["user_preferences"]["user_lat"] = gps_location["latitude"]
+                        params_chat["user_preferences"]["user_long"] = gps_location["longitude"]
                     else:
                         st.toast("Please click on the button on the left to allow location access", icon="⚠️")
                 response = st.session_state.agent.params_chat(prompt, **params_chat)

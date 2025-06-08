@@ -1,0 +1,9 @@
+[submodule "include/tripadvisor-dbt-transformer"]
+	path = include/tripadvisor-dbt-transformer
+	url = https://github.com/insight-engineers/tripadvisor-dbt-transformer
+[submodule "include/tripadvisor-crawler"]
+	path = include/tripadvisor-crawler
+	url = https://github.com/insight-engineers/tripadvisor-crawler
+[submodule "include/tripadvisor-absa-llm"]
+	path = include/tripadvisor-absa-llm
+	url = https://github.com/insight-engineers/tripadvisor-absa-llm

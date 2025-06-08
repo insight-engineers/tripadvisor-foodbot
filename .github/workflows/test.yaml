@@ -24,7 +24,7 @@ jobs:
         run: uv sync
 
       - name: Run tests
-        run: uv run pytest -v --junit-xml=test-results.xml
+        run: uv run pytest -v -W ignore::DeprecationWarning --junit-xml=test-results.xml
         env:
           STREAMLIT_FILE_PATH: _streamlit.py
 

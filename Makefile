@@ -1,16 +1,17 @@
 .PHONY: dev start test format load_qdrant_locations load_qdrant_reviews
 export STREAMLIT_FILE_PATH := _streamlit.py
+export CHAINLIT_FILE_PATH := _chainlit.py
 
 # development
-start:
+cl:
+	uv run chainlit run $(CHAINLIT_FILE_PATH) -w
+
+st:
 	uv run streamlit run $(STREAMLIT_FILE_PATH)
 
-dev:
-	uv run streamlit run $(STREAMLIT_FILE_PATH) --server.headless true
-
 # testing and linting
-test:
-	STREAMLIT_FILE_PATH=$(STREAMLIT_FILE_PATH) uv run pytest -v
+test-st:
+	STREAMLIT_FILE_PATH=$(STREAMLIT_FILE_PATH) uv run pytest -v -W ignore::DeprecationWarning
 
 format:
 	uv run ruff check --fix .

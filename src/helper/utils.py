@@ -1,6 +1,8 @@
 import os
+import re
 import time
 from math import atan2, cos, radians, sin, sqrt
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -25,11 +27,11 @@ def encode_url(url_string: str) -> str:
     return requests.utils.requote_uri(url_string)
 
 
-def generate_streaming_response(response: str):
-    """Generator to mimic some LLM response"""
-    for word in response:
-        yield word
-        time.sleep(0.005)
+def generate_streaming_response(response: Any, delay: float = 0.05):
+    """Generator to mimic some LLM response with spaces and newlines preserved"""
+    for part in re.findall(r"\S+\s*", str(response)):
+        yield part
+        time.sleep(delay)
 
 
 def get_welcome_message(name: str = "food lover") -> str:
@@ -51,3 +53,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     distance = R * c
     return distance
+
+
+def normalize_weights(weights):
+    """Normalize a list of weights to sum to 1."""
+    total = sum(weights)
+    if total == 0:
+        return [1 / len(weights)] * len(weights)  # Avoid division by zero
+    return [w / total for w in weights] if total > 0 else [0] * len(weights)

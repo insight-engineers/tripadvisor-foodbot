@@ -4,6 +4,9 @@
 
 ## Overview
 
+> [!NOTE]
+> Data for this project is sourced from repositories in the [`include`](include/) directory. It is scraped and processed, cleaned using multiple modules. The `dm_tripadvisor` and `fs_tripadvisor` datasets are publicly available in BigQuery for authenticated users and power the restaurant recommendation system.
+
 Restaurant recommendation system implementing **RAG (Retrieval-Augmented Generation)** architecture with **vector search** and **multi-criteria decision analysis (MCDA - ELECTRE III)**. Built on LlamaIndex for agent orchestration, Qdrant for vector storage, and BigQuery for data operations.
 
 ## Core Components
@@ -84,35 +87,55 @@ cp sa.json ./
 cp .env.template .env
 ```
 
-
 > [!NOTE]
 > The `sa.json` is the credential file of the GCP service account. If not have, the BigQuery operations will not work.
 
-3. Fill in the values in `.env`
+3. Prepare `.env` file
 
-```bash
-OPENAI_API_KEY=your-api-key
-QDRANT_API_KEY=your-api-key
-QDRANT_API_URL=your-api-url
-AWS_REGION_NAME=your-region
-AWS_BUCKET_NAME=your-bucket-name
-AWS_BUCKET_ENDPOINT_URL=your-bucket-endpoint
-AWS_ACCESS_KEY_ID=your-access-key-id
-AWS_SECRET_ACCESS_KEY=your-secret-access-key
-```
+  3.1 Generate a secret key for `chainlit` authentication (Optional, only required if you use `chainlit` UI)
+
+  ```bash
+  chainlit create-secret
+  ```
+
+  3.2 Prepare your GitHub OAuth credentials (Optional, only required if you use `chainlit` UI)
+
+  > [Creating an OAuth app - GitHub Docs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+
+3.3 Fill in the `.env` file with your credentials and configuration
+
+  ```bash
+  OPENAI_API_KEY=your-api-key
+  QDRANT_API_KEY=your-api-key
+  QDRANT_API_URL=your-api-url
+  AWS_REGION_NAME=your-region
+  AWS_BUCKET_NAME=your-bucket-name
+  AWS_BUCKET_ENDPOINT_URL=your-bucket-endpoint
+  AWS_ACCESS_KEY_ID=your-access-key-id
+  AWS_SECRET_ACCESS_KEY=your-secret-access-key
+  OAUTH_GITHUB_CLIENT_ID=your-github-client-id
+  OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
+  CHAINLIT_AUTH_SECRET=generated-secret-key
+  ```
 
 4. Start development server
 
-```bash
-make dev
-```
+- For `chainlit` UI:
+  ```bash
+  make cl
+  ```
+- For `streamlit` UI:
+  ```bash
+  make st
+  ```
 
 ### Dependencies
 
-Core: `llama-index>=0.12.30`, `fastembed>=0.4.2`, `qdrant-client>=1.12.1`
-Data: `google-cloud-bigquery>=3.30.0`, `pandas>=2.2.3`
-UI: `streamlit>=1.45.1`
-Dev: `black>=25.1.0`, `isort>=6.0.1`, `ruff>=0.11.5`
+This project uses `uv` as the package manager. The dependencies are managed in the `uv` configuration file. You can find the dependencies in the `uv.yaml` file.
+
+- Core: `llama-index`, `fastembed`, `qdrant-client`
+- Data: `google-cloud-bigquery`, `pandas`
+- UI: `streamlit`, `chainlit`
 
 ## License
 
