@@ -8,7 +8,7 @@ from src.main import generate_foodbot_agent, s3_client
 CONFIG_FILE = "secret.yaml"
 
 
-# OAuth provider configuration
+# -- OAuth callback handler for GitHub --
 @cl.oauth_callback
 def oauth_callback(
     provider_id: str,
@@ -20,19 +20,15 @@ def oauth_callback(
     Handle OAuth callback and create user from GitHub data
     """
     if provider_id == "github":
-        # Extract GitHub username and other info
         github_username = raw_user_data.get("login")
         github_name = raw_user_data.get("name", github_username)
         github_email = raw_user_data.get("email")
 
         return cl.User(
-            identifier=github_username,  # Use GitHub username as identifier
+            identifier=github_username,
             metadata={
                 "name": github_name,
                 "email": github_email,
-                "avatar_url": f"https://github.com/{github_username}.png",
-                "provider": "github",
-                "raw_data": raw_user_data,
             },
         )
 
@@ -87,8 +83,6 @@ async def init_user_session():
         "service_score": 0.15,
         "distance_preference": False,
         "distance_km": 15,
-        "user_lat": 0.0,
-        "user_long": 0.0,
     }
     prefs_container = config.setdefault("preferences", {})
     user_prefs = prefs_container.get(username, default_prefs.copy())
@@ -179,8 +173,6 @@ async def start():
                 step=1,
                 initial=user_prefs.get("distance_km", 15),
             ),
-            cliw.NumberInput(id="user_lat", label="Latitude", initial=user_prefs.get("user_lat", 0.0)),
-            cliw.NumberInput(id="user_long", label="Longitude", initial=user_prefs.get("user_long", 0.0)),
         ]
     ).send()
 
@@ -206,21 +198,11 @@ async def handle_message(message: cl.Message):
     prefs = cl.user_session.get("user_preferences", {})
     params_chat = {"user_preferences": prefs}
 
-    # If distance preference is on, but lat/long are zero, prompt to set them
     if prefs.get("distance_preference", False):
-        lat, lon = prefs.get("user_lat", 0.0), prefs.get("user_long", 0.0)
-        if lat == 0.0 or lon == 0.0:
-            await cl.Message(
-                content="Please set valid Latitude and Longitude in chat settings for distance-based search.",
-                author="assistant",
-            ).send()
-            return
         params_chat.update(
             {
                 "distance_preference": True,
                 "distance_km": prefs["distance_km"],
-                "user_lat": lat,
-                "user_long": lon,
             }
         )
 
@@ -288,8 +270,6 @@ async def handle_settings_update(settings):
                 "service_score": settings.get("service_score", prefs["service_score"]),
                 "distance_preference": settings.get("distance_preference", prefs["distance_preference"]),
                 "distance_km": settings.get("max_distance", prefs["distance_km"]),
-                "user_lat": settings.get("user_lat", prefs["user_lat"]),
-                "user_long": settings.get("user_long", prefs["user_long"]),
             }
         )
 

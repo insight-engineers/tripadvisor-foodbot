@@ -1,4 +1,4 @@
-.PHONY: dev start test format load_qdrant_locations load_qdrant_reviews
+.PHONY: dev start test format load_qdrant_locations load_qdrant_reviews load_qdrant_geolocations
 export STREAMLIT_FILE_PATH := _streamlit.py
 export CHAINLIT_FILE_PATH := _chainlit.py
 
@@ -23,3 +23,6 @@ load_qdrant_locations:
 
 load_qdrant_reviews:	
 	uv run -m cli.qdrant_loader --source 'tripadvisor-recommendations.fs_tripadvisor.fs_review' --collection 'tripadvisor_reviews' --embedding_column 'review_text_nlp'
+
+load_qdrant_geolocations:
+	uv run -m cli.qdrant_loader --source 'tripadvisor-recommendations.fs_tripadvisor.fs_geolocation' --collection 'tripadvisor_geolocations' --embedding_column 'geolocation_text_nlp'

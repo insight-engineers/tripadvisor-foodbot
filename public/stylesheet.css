@@ -1,5 +1,4 @@
 #root {
-    background-image: url(/public/background.jpg) !important;
     background-size: cover;
     background-color: rgba(250, 250, 250, 0.9);
     background-blend-mode: lighten;
@@ -25,9 +24,25 @@
 }
 
 #step-candidate_generation_and_ranking::before {
-    content: "🔍 STEP: ";
+    content: "👑";
 }
 
 #step-enrich_restaurant_recommendations::before {
-    content: "💡 STEP: ";
+    content: "⏺";
+    animation: ping 0.85s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    animation-delay: 0.5s;
+    animation-fill-mode: both;
+}
+
+@keyframes ping {
+    0% {
+        transform: scale(0.75);
+        opacity: 1;
+    }
+
+    75%,
+    100% {
+        transform: scale(1.75);
+        opacity: 0.2;
+    }
 }

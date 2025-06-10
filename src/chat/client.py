@@ -16,6 +16,12 @@ qdrant_client_location = QdrantQuery(
     collection_name="tripadvisor_locations",
 )
 
+qdrant_client_geolocation = QdrantQuery(
+    qdrant_api_url=os.environ.get("QDRANT_API_URL"),
+    qdrant_api_key=os.environ.get("QDRANT_API_KEY"),
+    collection_name="tripadvisor_geolocations",
+)
+
 bigquery_client = BigQueryHandler(
     project_id="tripadvisor-recommendations",
     credentials_path=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sa.json"),

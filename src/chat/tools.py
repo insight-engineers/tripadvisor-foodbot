@@ -6,7 +6,7 @@ from loguru import logger as log
 from pydantic import BaseModel
 from tabulate import tabulate
 
-from src.chat.client import bigquery_client, core_llm_model, qdrant_client_location
+from src.chat.client import bigquery_client, core_llm_model, qdrant_client_geolocation, qdrant_client_location
 from src.chat.prompt import ENRICH_PROMPT
 from src.helper.utils import encode_url
 from src.ranker.electre_iii import build_electre_iii
@@ -26,25 +26,31 @@ class RestaurantsFinalized(BaseModel):
 
 def candidate_generation_and_ranking(
     english_natural_query: str,
+    location_natural_query: str = "",
     city_filter: Literal["Ha Noi", "Ho Chi Minh", "Whatever"] = "Whatever",
     kwargs_dict: Dict[str, Any] = None,
 ) -> List[str]:
     """
     Retrieves the top-K restaurants that match the user's query.
     The english_natural_query should be a short and concise information containing only the key information (remove speech words or noise, verbs, etc).
-    If key information is missing (e.g., city), prompt the user for clarification.
+    If key information is missing (e.g., city), prompt the user for clarification about location preference, like at Ha Noi or Ho Chi Minh City, near which ward or district, etc.
+    location_natural_query can be skipped input if the user has no preference about the location other than the city.
     """
     log.info("Candidate generation using Qdrant")
     top_k = 5
     candidate_limit = top_k * 100
     decoded_query = unidecode.unidecode(english_natural_query)
 
-    search_restaurants_kwargs = {"natural_query": decoded_query, "limit": candidate_limit}
+    search_restaurants_kwargs = {"natural_query": decoded_query}
+    search_location_kwargs = {"natural_query": location_natural_query, "limit": 1}
 
     if city_filter in ["Ha Noi", "Ho Chi Minh"]:
         search_restaurants_kwargs["city"] = city_filter
+        search_location_kwargs["city"] = city_filter
 
-    locations_with_query_matching_score = qdrant_client_location.search_restaurants(**search_restaurants_kwargs)
+    locations_with_query_matching_score = qdrant_client_location.search_restaurants(
+        **search_restaurants_kwargs, limit=candidate_limit
+    )
     log.info("Successfully retrieved candidate restaurants from Qdrant with cosine similarity score")
 
     criteria = ["food", "ambience", "price", "service"]
@@ -66,14 +72,22 @@ def candidate_generation_and_ranking(
     }
 
     if distance_preference:
-        log.info("User has distance preference. Computing distance score...")
+        log.info("User has distance preference. Get user latitude and longitude")
+
+        query_geolocation = qdrant_client_geolocation.search_lat_long(**search_location_kwargs)
+        log.success(f"Successfully retrieved user geolocation from Qdrant: {query_geolocation}")
+
+        query_latitude = query_geolocation[0].get("latitude")
+        query_longitude = query_geolocation[0].get("longitude")
+
+        log.info("Computing distance score for restaurants")
         locations_with_score = compute_distance_score(
             locations_with_score,
             user_preferences.get("distance_km"),
-            user_preferences.get("user_lat"),
-            user_preferences.get("user_long"),
+            user_lat=query_latitude,
+            user_long=query_longitude,
         )
-        user_preferences["distance_score"] = 0.05
+        user_preferences["distance_score"] = 0.25
         thresholds["distance_score"] = {"q": 0.05, "p": 0.10, "v": 0.20}
 
     user_preferences["query_matching_score"] = 0.5

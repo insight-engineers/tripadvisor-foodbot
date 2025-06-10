@@ -64,10 +64,3 @@ class QdrantBase(ABC):
                 collection_name=self.collection_name,
                 vectors_config={"size": self.vector_size, "distance": "Cosine"},
             )
-
-    def __del__(self):
-        """
-        Close the Qdrant client connection.
-        """
-        self.client.close()
-        log.info("Qdrant client connection closed.")

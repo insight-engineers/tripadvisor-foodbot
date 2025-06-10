@@ -6,14 +6,12 @@ from src.helper.utils import haversine_distance
 def compute_criterion_score(positive: pd.Series, negative: pd.Series) -> pd.Series:
     """
     Compute the criterion score based on the given positive and negative values.
+        - Case 1: If there are more positive than negative values, the score is computed as (1 - negative / positive).
+        - Case 2: If there are more negative than positive values, the score is computed as (positive / negative - 1).
+        - If neither case applies, the score is set to 0.
     """
-    # case 1: more positive than negative |C+| > |C-|
     more_positive = (1 - negative / positive).where(positive > negative)
-
-    # case 2: more negative than positive |C+| > |C-|
     more_negative = (positive / negative - 1).where(positive < negative)
-
-    # default to 0 when equal or both are zero
     criterion_score = more_positive.combine_first(more_negative).fillna(0)
 
     return criterion_score
@@ -29,10 +27,8 @@ def compute_normalized_criterion_score(df: pd.DataFrame, criteria: list[str]) ->
     for criterion in criteria:
         pos_col = f"{criterion}_positive"
         neg_col = f"{criterion}_negative"
-        # compute raw score
         raw_score_col = f"{criterion}_score_raw"
         df_normalized_scores[raw_score_col] = compute_criterion_score(df[pos_col], df[neg_col])
-        # norm score
         norm_score_col = f"{criterion}_score_normalized"
         df_normalized_scores[norm_score_col] = (df_normalized_scores[raw_score_col] + 1) * 50
 
