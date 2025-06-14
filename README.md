@@ -104,7 +104,7 @@ src/
 
     Change the `OPENAI_API_KEY` to your OpenAI API key.
 
-    > [!NOTE] BigQuery is optional.
+    > [!NOTE]
     > If you want to use BigQuery, put the `sa.json` (service account JSON file) in the root directory and set the `FEATURE_STORAGE_MODE` to `remote` in the `src/helper/vars.py` file. If you want to use local storage, set it to `local`.
 
 3. **Start containers (optional - ignore if using remote services)**
@@ -119,7 +119,7 @@ src/
     Make sure you have Docker installed and running.
     If you want to use remote services, you can skip this step.
 
-    > [!NOTE] Remote services
+    > [!NOTE]
     > If you want to use remote Qdrant and S3, you can set the `QDRANT_*` and `*_AWS_*` environment variables in the `.env` file to your remote service credentials.
 
 4. **Initialize Qdrant collections**
@@ -142,6 +142,7 @@ src/
 
     This will generate the Prisma client and apply the schema migrations.
 
+    > [!NOTE]
     > Change the `DATABASE_URL` in the `.env` file to your database connection string if you are using a remote database.
 
 6. **Start development server**
