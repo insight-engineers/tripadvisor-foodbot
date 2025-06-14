@@ -1,27 +1,19 @@
+import os
 from typing import Annotated, Any, Dict, List, Literal
 
+import pandas as pd
 import unidecode
 from llama_index.core.tools import FunctionTool
 from loguru import logger as log
-from pydantic import BaseModel
 from tabulate import tabulate
 
+from chat.models import RestaurantsFinalized
 from src.chat.client import bigquery_client, core_llm_model, qdrant_client_geolocation, qdrant_client_location
 from src.chat.prompt import ENRICH_PROMPT
-from src.helper.utils import encode_url
+from src.helper.utils import encode_url, get_feature_storage_mode, normalize_weights
+from src.helper.vars import OPENAI_MODEL
 from src.ranker.electre_iii import build_electre_iii
 from src.ranker.scoring import compute_distance_score, compute_normalized_criterion_score
-
-
-class RestaurantDescription(BaseModel):
-    location_id: str
-    short_description: str
-
-
-class RestaurantsFinalized(BaseModel):
-    begin_description: str
-    restaurants: List[RestaurantDescription]
-    end_description: str
 
 
 def candidate_generation_and_ranking(
@@ -48,9 +40,7 @@ def candidate_generation_and_ranking(
         search_restaurants_kwargs["city"] = city_filter
         search_location_kwargs["city"] = city_filter
 
-    locations_with_query_matching_score = qdrant_client_location.search_restaurants(
-        **search_restaurants_kwargs, limit=candidate_limit
-    )
+    locations_with_query_matching_score = qdrant_client_location.search_restaurants(**search_restaurants_kwargs, limit=candidate_limit)
     log.info("Successfully retrieved candidate restaurants from Qdrant with cosine similarity score")
 
     criteria = ["food", "ambience", "price", "service"]
@@ -91,10 +81,9 @@ def candidate_generation_and_ranking(
         thresholds["distance_score"] = {"q": 0.05, "p": 0.10, "v": 0.20}
 
     user_preferences["query_matching_score"] = 0.5
-    user_preferences = {
-        key: value for key, value in user_preferences.items() if key in thresholds and isinstance(value, (int, float))
-    }
-    log.info("Ranking restaurants using ELECTRE III")
+    user_preferences = {key: value for key, value in user_preferences.items() if key in thresholds and isinstance(value, (int, float))}
+    user_preferences = normalize_weights(user_preferences)
+    log.info(f"Ranking restaurants using ELECTRE III with normalized user preferences: {user_preferences}")
     location_with_electre_rank = build_electre_iii(locations_with_score, user_preferences, thresholds)
 
     log.success(f"Successfully ranked restaurants using ELECTRE III. Get {top_k} recommendations")
@@ -116,13 +105,24 @@ def enrich_restaurant_recommendations(
     Enrich the restaurant recommendations with more information.
     ONLY use this function at the end of the pipeline.
     """
-    query = f"""
-    SELECT location_text_nlp, location_id, location_name, address, location_map, location_url, image_url, cuisine_list, price_range, location_overall_rate
-    FROM `tripadvisor-recommendations.fs_tripadvisor.fs_location`
-    WHERE location_id IN ({", ".join(map(str, locations))})
-    """
+    feature_storage_mode = get_feature_storage_mode()
+    if feature_storage_mode == "remote":
+        query = f"""
+        SELECT location_text_nlp, location_id, location_name, address, location_map, location_url, image_url, cuisine_list, price_range, location_overall_rate
+        FROM `tripadvisor-recommendations.fs_tripadvisor.fs_location`
+        WHERE location_id IN ({", ".join(map(str, locations))})
+        """
 
-    query_result = bigquery_client.fetch_bigquery_as_list(query)
+        query_result = bigquery_client.fetch_bigquery_as_list(query)
+    elif feature_storage_mode == "local":
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        data_path = os.path.join(project_root, "data", "fs_location.parquet")
+        query_result = pd.read_parquet(data_path, engine="pyarrow")
+        log.success(f"Loaded {len(query_result)} records from local storage.")
+        query_result = query_result[query_result["location_id"].isin([int(loc) for loc in locations])].to_dict("records")
+        log.info(f"Filtered records to {len(query_result)} based on provided location IDs.")
+    else:
+        return "Please contact developer to fix the feature storage mode."
 
     if not query_result:
         return "No restaurant recommendations found. Please try again with a different query."
@@ -144,16 +144,14 @@ def enrich_restaurant_recommendations(
         ]
     )
 
-    llm_context = [
-        {
-            "role": "developer",
-            "content": ENRICH_PROMPT.format(context_data="\n\n".join(context_data)),
-        }
-    ]
-
     llm_params = {
-        "messages": llm_context,
-        "model": "gpt-4.1-nano",
+        "messages": [
+            {
+                "role": "developer",
+                "content": ENRICH_PROMPT.format(context_data="\n\n".join(context_data)),
+            }
+        ],
+        "model": OPENAI_MODEL,
         "temperature": 0.15,
         "top_p": 0.9,
         "response_format": RestaurantsFinalized,
@@ -164,7 +162,7 @@ def enrich_restaurant_recommendations(
         unable_response = RestaurantsFinalized(
             begin_description="",
             restaurants=[],
-            end_description="Unable to generate recommendations at this time.",
+            end_description_with_follow_up="Unable to generate recommendations at this time.",
         ).model_dump()
         if completion.choices[0].message.parsed:
             restaurant_description = completion.choices[0].message.parsed.model_dump()
@@ -176,9 +174,9 @@ def enrich_restaurant_recommendations(
         log.error(f"An error occurred: {e}")
         restaurant_description = unable_response
 
-    short_desc_map = {
-        str(item["location_id"]): item["short_description"] for item in restaurant_description.get("restaurants", [])
-    }
+    short_desc_map = {str(item["location_id"]): item["short_description"] for item in restaurant_description.get("restaurants", [])}
+
+    price_emoji_map = {"Cheap Eats": "💰", "Mid-range": "💰💰", "Fine Dining": "💰💰💰"}
 
     restaurant_output = "\n".join(
         [
@@ -186,11 +184,7 @@ def enrich_restaurant_recommendations(
             "\n".join(
                 [
                     f"### **{loc.get('location_name', '')}**\n"
-                    + (
-                        f"{short_desc_map.get(str(loc.get('location_id')), '')}\n\n"
-                        if short_desc_map.get(str(loc.get("location_id")))
-                        else ""
-                    )
+                    + (f"{short_desc_map.get(str(loc.get('location_id')), '')}\n\n" if short_desc_map.get(str(loc.get("location_id"))) else "")
                     + "".join(
                         [
                             (f"- 📍 {loc.get('address', '')}\n" if "address" in loc else ""),
@@ -200,31 +194,27 @@ def enrich_restaurant_recommendations(
                                 else ""
                             ),
                             (
-                                f"- 💸 {loc.get('price_range', '')}\n"
+                                f"- Price Range: {price_emoji_map.get(loc.get('price_range'))}\n"
                                 if "price_range" in loc and loc.get("price_range") != "Not Defined"
                                 else ""
                             ),
                             (
-                                f"- Google Maps: [Google Maps]({encode_url(loc.get('location_map', ''))})\n"
+                                f"- Google Maps: [click here to open Google Maps]({encode_url(loc.get('location_map', ''))})\n"
                                 if "location_map" in loc
                                 else ""
                             ),
                             (
-                                f"- Restaurant Website: [Restaurant Website]({encode_url(loc.get('location_url', ''))})\n"
+                                f"- Restaurant Website: [click here to open Restaurant Website]({encode_url(loc.get('location_url', ''))})\n"
                                 if "location_url" in loc
                                 else ""
                             ),
-                            (
-                                f"![{loc.get('location_name', '')}]({loc.get('image_url', '')}?w=500&h=300&s=1)\n"
-                                if "image_url" in loc
-                                else ""
-                            ),
+                            (f"![{loc.get('location_name', '')}]({loc.get('image_url', '')}?w=500&h=300&s=1)\n" if "image_url" in loc else ""),
                         ]
                     )
                     for loc in query_result
                 ]
             ),
-            f"---\n{restaurant_description['end_description']}\n",
+            f"---\n{restaurant_description['end_description_with_follow_up']}\n",
         ]
     )
 

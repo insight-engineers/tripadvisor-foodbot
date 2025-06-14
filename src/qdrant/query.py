@@ -90,7 +90,7 @@ class QdrantQuery(QdrantBase):
         except Exception as e:
             raise RuntimeError(f"Error searching restaurants: {e}")
         finally:
-            time.sleep(1.5)  # Respect Qdrant rate limits
+            time.sleep(1.5)
 
     def search_lat_long(self, natural_query: str, city: str = None, limit: int = 1) -> List[Dict[str, float]]:
         try:

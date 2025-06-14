@@ -1,0 +1,48 @@
+x-common: &common
+  restart: unless-stopped
+  env_file: .env
+
+services:
+  qdrant:
+    <<: *common
+    container_name: foodadvisor_qdrant
+    image: qdrant/qdrant:v1.14.1
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:-changeme}
+    ports:
+      - 6333:6333
+      - 6334:6334
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  postgres:
+    <<: *common
+    container_name: foodadvisor_postgres
+    image: postgres:17.5-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    ports:
+      - 5432:5432
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  minio:
+    <<: *common
+    container_name: foodadvisor_minio
+    image: minio/minio:RELEASE.2025-05-24T17-08-30Z
+    ports:
+      - "9000:9000"  # Minio API
+      - "9001:9001"  # Minio Web Console
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${APP_AWS_ACCESS_KEY:-minio}
+      MINIO_ROOT_PASSWORD: ${APP_AWS_SECRET_KEY:-minio123}
+    command: server --console-address ":9001" /data
+
+volumes:
+  pg_data:
+  qdrant_data:
+  minio_data:

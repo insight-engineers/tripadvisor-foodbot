@@ -77,11 +77,12 @@ src/
 ### 📋 Requirements
 
 - 🐍 `python ~= 3.11`
-- 📦 `uv` package manager
-- ☁️ GCP account with BigQuery: [GCP Console](https://console.cloud.google.com/)
-- 🔑 OpenAI API key: [OpenAI Console](https://platform.openai.com/)
-- 🟣 Qdrant Cloud instance: [Qdrant Console](https://cloud.qdrant.io/)
-- 🗄️ AWS S3 (or alternative storage service using S3 API)
+- 📦 `uv` package manager (for python deps)
+- 🌐 `npx` (for `prisma` CLI)
+- 🔑 OpenAI API key: [OpenAI Console](https://platform.openai.com/) (Mandatory)
+- ☁️ GCP account with BigQuery: [GCP Console](https://console.cloud.google.com/) (Optional, you can use local storage)
+- 🟣 Qdrant Cloud instance: [Qdrant Console](https://cloud.qdrant.io/) (Optional, you can use my docker containers)
+- 🗄️ AWS S3 (or alternative storage service using S3 API) (Optional, you can use my docker containers)
 
 ---
 
@@ -93,57 +94,63 @@ src/
     uv sync
     ```
 
-2. **Place GCP service account key and copy `.env.template` to `.env`**
+2. **Set up environment variables**
+
+    Copy the `.env.example` file to `.env` and fill in the required values:
 
     ```bash
-    cp sa.json ./
-    cp .env.template .env
+    cp .env.example .env
     ```
 
-    > [!NOTE]
-    > 🗝️ The `sa.json` is the credential file for the GCP service account. Without it, BigQuery operations will not work.
+    Change the `OPENAI_API_KEY` to your OpenAI API key.
 
-3. **Prepare `.env` file**
+    > [!NOTE] BigQuery is optional.
+    > If you want to use BigQuery, put the `sa.json` (service account JSON file) in the root directory and set the `FEATURE_STORAGE_MODE` to `remote` in the `src/helper/vars.py` file. If you want to use local storage, set it to `local`.
 
-    3.1 🔐 Generate a secret key for `chainlit` authentication (Optional, only required if you use `chainlit` UI)
+3. **Start containers (optional - ignore if using remote services)**
+
+    If you want to use local Qdrant and S3, you can start the containers using `docker-compose`:
 
     ```bash
-    chainlit create-secret
+    docker-compose up -d
     ```
 
-    3.2 🛡️ Prepare your GitHub OAuth credentials (Optional, only required if you use `chainlit` UI)
+    This will start Qdrant and S3-compatible storage services locally (MinIO).
+    Make sure you have Docker installed and running.
+    If you want to use remote services, you can skip this step.
 
-    > [Creating an OAuth app - GitHub Docs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+    > [!NOTE] Remote services
+    > If you want to use remote Qdrant and S3, you can set the `QDRANT_*` and `*_AWS_*` environment variables in the `.env` file to your remote service credentials.
 
-    3.3 📝 Fill in the `.env` file with your credentials and configuration
+4. **Initialize Qdrant collections**
+
+    If you are using Qdrant, you need to initialize the collections. You can do this by running the following command:
 
     ```bash
-    OPENAI_API_KEY=your-api-key
-    QDRANT_API_KEY=your-api-key
-    QDRANT_API_URL=your-api-url
-    AWS_REGION_NAME=your-region
-    AWS_BUCKET_NAME=your-bucket-name
-    AWS_BUCKET_ENDPOINT_URL=your-bucket-endpoint
-    AWS_ACCESS_KEY_ID=your-access-key-id
-    AWS_SECRET_ACCESS_KEY=your-secret-access-key
-    OAUTH_GITHUB_CLIENT_ID=your-github-client-id
-    OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
-    CHAINLIT_AUTH_SECRET=generated-secret-key
+    make load_qdrant
     ```
 
-4. **Start development server**
+    This will create the necessary collections in Qdrant and load the initial data.
 
-    - For `chainlit` UI:
-      ```bash
-      make cl
-      ```
-    - For `streamlit` UI:
-      ```bash
-      make st
-      ```
+5. **Initialize Chatbot Schema (Prisma)**
 
-    > [!NOTE] ⚠️ DEPRECATION
-    > Streamlit UI is not fully implemented yet, but you can use it to test the agent and see the results.
+    Because we are using Prisma for the storage of the chatbot schema, you need to run the following command to generate the Prisma client and apply the schema migrations:
+
+    ```bash
+    make db
+    ```
+
+    This will generate the Prisma client and apply the schema migrations.
+
+    > Change the `DATABASE_URL` in the `.env` file to your database connection string if you are using a remote database.
+
+6. **Start development server**
+
+    ```bash
+    make run
+    ```
+
+Check your `http://localhost:8000` for the LlamaIndex agent UI.
 
 ---
 
@@ -153,7 +160,7 @@ This project uses `uv` as the package manager. Dependencies are managed in the `
 
 - Core: `llama-index`, `fastembed`, `qdrant-client`
 - Data: `google-cloud-bigquery`, `pandas`
-- UI: `streamlit`, `chainlit`
+- UI: `chainlit`
 
 ---
 

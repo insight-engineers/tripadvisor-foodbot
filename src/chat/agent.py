@@ -43,6 +43,8 @@ from llama_index.core.tools import BaseTool, ToolOutput
 from llama_index.core.tools.types import ToolMetadata
 from loguru import logger as log
 
+from src.chat.prompt import AGENT_SYSTEM_PROMPT
+
 dispatcher = instrument.get_dispatcher(__name__)
 
 
@@ -58,7 +60,7 @@ class ParseParamsAgent(FunctionCallingAgent):
         verbose: bool = False,
         max_function_calls: int = DEFAULT_MAX_FUNCTION_CALLS,
         callback_manager: Optional[CallbackManager] = None,
-        system_prompt: Optional[str] = None,
+        system_prompt: Optional[str] = AGENT_SYSTEM_PROMPT,
         prefix_messages: Optional[List[ChatMessage]] = None,
         memory: Optional[BaseMemory] = None,
         chat_history: Optional[List[ChatMessage]] = None,

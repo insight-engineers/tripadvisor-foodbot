@@ -43,9 +43,7 @@ def compute_normalized_criterion_score(df: pd.DataFrame, criteria: list[str]) ->
     ] + [f"{c}_score_normalized" for c in criteria]
 
     df_normalized_scores = df_normalized_scores[relevant_cols]
-    df_normalized_scores = df_normalized_scores.rename(
-        columns={col: col.replace("_normalized", "") for col in df_normalized_scores.columns}
-    )
+    df_normalized_scores = df_normalized_scores.rename(columns={col: col.replace("_normalized", "") for col in df_normalized_scores.columns})
     df_normalized_scores["query_matching_score"] = df_normalized_scores["query_matching_score"] * 100
 
     return df_normalized_scores

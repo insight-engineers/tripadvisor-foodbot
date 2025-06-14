@@ -5,6 +5,7 @@ description = "TripAdvisor Food Bot"
 readme = "README.md"
 requires-python = "~=3.11"
 dependencies = [
+    "asyncpg>=0.30.0",
     "boto3==1.38.26",
     "chainlit==2.5.5",
     "db-dtypes==1.4.2",
@@ -15,13 +16,11 @@ dependencies = [
     "loguru==0.7.3",
     "numba==0.61.2",
     "pandas==2.2.3",
+    "pandas-gbq>=0.29.1",
     "pytest==8.3.5",
     "qdrant-client==1.13.3",
-    "scikit-learn==1.6.1",
+    "scipy>=1.15.3",
     "sqlparse==0.5.3",
-    "streamlit==1.45.1",
-    "streamlit-authenticator==0.4.2",
-    "streamlit-geolocation==0.0.10",
     "tabulate==0.9.0",
     "unidecode==1.4.0",
     "uuid==1.30",
@@ -34,11 +33,11 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 120
+line-length = 150
 exclude = [".venv", "build", "dist", "include"]
 
 [tool.ruff.lint]
-select = ["F", "I", "RUF022"]
+select = ["F", "I001", "RUF022"]
 
 [tool.uv]
 package = true

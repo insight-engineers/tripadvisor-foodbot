@@ -3,6 +3,11 @@ sa.json
 **/.DS_Store
 secret.yaml
 .vscode/
+package-lock.json
+prisma/migrations/
+node_modules
+build
+npm-debug.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

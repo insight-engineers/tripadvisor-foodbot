@@ -1,120 +1,39 @@
 import chainlit as cl
-import chainlit.input_widget as cliw
 import yaml
 
-from src.helper.utils import generate_streaming_response, get_welcome_message
-from src.main import generate_foodbot_agent, s3_client
+from src.helper.utils import (
+    encode_b64_string,
+    generate_streaming_response,
+    get_admin_account,
+    get_config_file,
+)
+from src.main import (
+    get_chat_settings,
+    init_user_session,
+    s3_client,
+)
 
-CONFIG_FILE = "secret.yaml"
 
+@cl.password_auth_callback
+def auth_callback(username: str, password: str):
+    session_username, session_password = encode_b64_string(username), encode_b64_string(password)
+    admin_name_display, admin_username, admin_password = get_admin_account()
 
-# -- OAuth callback handler for GitHub --
-@cl.oauth_callback
-def oauth_callback(
-    provider_id: str,
-    token: str,
-    raw_user_data: dict,
-    default_user: cl.User,
-) -> cl.User:
-    """
-    Handle OAuth callback and create user from GitHub data
-    """
-    if provider_id == "github":
-        github_username = raw_user_data.get("login")
-        github_name = raw_user_data.get("name", github_username)
-        github_email = raw_user_data.get("email")
-
+    if (session_username, session_password) == (admin_username, admin_password):
         return cl.User(
-            identifier=github_username,
-            metadata={
-                "name": github_name,
-                "email": github_email,
-            },
+            identifier=admin_username,
+            display_name=admin_name_display,
+            metadata={"role": "admin", "provider": "credentials"},
         )
-
-    return None
-
-
-# Add WebSocket connection handler to prevent auth errors
-@cl.on_chat_end
-async def on_chat_end():
-    """Clean up when chat ends"""
-    pass
-
-
-async def init_user_session():
-    """
-    1. Get authenticated user
-    2. Initialize S3 client
-    3. Load (or create) CONFIG_FILE on S3
-    4. Ensure user preferences exist
-    5. Create the agent and store everything in user_session
-    Returns: username, welcome message
-    """
-    # -- 1. Get authenticated user
-    user = cl.user_session.get("user")
-    if not user or user.identifier == "anonymous":
-        await cl.Message(content="Authentication required. Please log in with GitHub.").send()
-        return None, None
-
-    username = user.identifier  # This is the GitHub username
-
-    # -- 2. Load/initialize config file on S3
-    try:
-        objects = s3_client.list_objects()
-        if not any(obj["file"] == CONFIG_FILE for obj in objects):
-            default_conf = {"credentials": {"usernames": {}}, "preferences": {}}
-            s3_client.write_object(CONFIG_FILE, yaml.dump(default_conf))
-
-        raw = s3_client.read_object(CONFIG_FILE)
-        config = yaml.safe_load(raw)
-        cl.user_session.set("config", config)
-    except Exception as e:
-        await cl.Message(content=f"Error handling config file in S3: {e}").send()
-        return None, None
-
-    # -- 3. Set user and preferences
-    cl.user_session.set("username", username)
-
-    default_prefs = {
-        "food_score": 0.55,
-        "ambience_score": 0.15,
-        "price_score": 0.15,
-        "service_score": 0.15,
-        "distance_preference": False,
-        "distance_km": 15,
-    }
-    prefs_container = config.setdefault("preferences", {})
-    user_prefs = prefs_container.get(username, default_prefs.copy())
-
-    if username not in prefs_container:
-        prefs_container[username] = user_prefs
-        s3_client.write_object(CONFIG_FILE, yaml.dump(config))
-
-    cl.user_session.set("user_preferences", user_prefs)
-
-    # -- 4. Agent instantiation
-    try:
-        agent = generate_foodbot_agent(chat_store_token_limit=4096, verbose=True, callback="chainlit")
-        cl.user_session.set("agent", agent)
-    except Exception as e:
-        await cl.Message(content=f"Error initializing agent: {e}").send()
-        return None, None
-
-    # -- 5. Welcome message with user's name
-    display_name = user.metadata.get("name", username)
-    wm = get_welcome_message(name=display_name)
-    return username, wm
+    else:
+        return None
 
 
 @cl.on_chat_start
-async def start():
-    # Check if user is properly authenticated
-    user = cl.user_session.get("user")
-    if not user or user.identifier == "anonymous":
-        await cl.Message(content="Please authenticate with GitHub to access the food bot.").send()
-        return
-
+async def on_chat_start():
+    """
+    Initialize the user session, set up preferences, and send a welcome message.
+    """
     username, welcome_msg = await init_user_session()
 
     if not username or not welcome_msg:
@@ -122,89 +41,51 @@ async def start():
         return
 
     await cl.Message(content=welcome_msg, author="assistant").send()
+    await get_chat_settings().send()
 
-    # Load user's existing preferences for the sliders
-    user_prefs = cl.user_session.get("user_preferences", {})
-
-    await cl.ChatSettings(
-        [
-            cliw.Slider(
-                id="food_score",
-                label="Food Score",
-                min=0.0,
-                max=1.0,
-                step=0.05,
-                initial=user_prefs.get("food_score", 0.55),
-            ),
-            cliw.Slider(
-                id="ambience_score",
-                label="Ambience Score",
-                min=0.0,
-                max=1.0,
-                step=0.05,
-                initial=user_prefs.get("ambience_score", 0.15),
-            ),
-            cliw.Slider(
-                id="price_score",
-                label="Price Score",
-                min=0.0,
-                max=1.0,
-                step=0.05,
-                initial=user_prefs.get("price_score", 0.15),
-            ),
-            cliw.Slider(
-                id="service_score",
-                label="Service Score",
-                min=0.0,
-                max=1.0,
-                step=0.05,
-                initial=user_prefs.get("service_score", 0.15),
-            ),
-            cliw.Switch(
-                id="distance_preference",
-                label="Prefer Nearby Restaurants",
-                initial=user_prefs.get("distance_preference", False),
-            ),
-            cliw.Slider(
-                id="max_distance",
-                label="Max Distance (km)",
-                min=1,
-                max=30,
-                step=1,
-                initial=user_prefs.get("distance_km", 15),
-            ),
-        ]
+    res = await cl.AskActionMessage(
+        content="🤔 What vibe are you looking for today?",
+        actions=[
+            cl.Action(name="food", payload={"score": "food_score"}, label="🍕 I want amazing food!"),
+            cl.Action(name="ambience", payload={"score": "ambience_score"}, label="🌟 The atmosphere"),
+            cl.Action(name="price", payload={"score": "price_score"}, label="💸 Save money"),
+            cl.Action(name="service", payload={"score": "service_score"}, label="👑 VIP service"),
+        ],
+        author="assistant",
+        timeout=1200,
     ).send()
 
+    if res and res.get("payload"):
+        selected_score = res["payload"]["score"]
 
-@cl.action_callback("increase_food_score")
-async def increase_food_score():
-    """Increase food score preference"""
-    prefs = cl.user_session.get("user_preferences", {})
-    prefs["food_score"] = min(prefs.get("food_score", 0.55) + 0.05, 1.0)
-    cl.user_session.set("user_preferences", prefs)
-    await cl.Message(content="Food score preference increased!").send()
+        config = cl.user_session.get("config")
+        username = cl.user_session.get("username")
+        prefs = cl.user_session.get("user_preferences", {})
+
+        for score in ["food_score", "ambience_score", "price_score", "service_score"]:
+            prefs[score] = 0.5
+        prefs[selected_score] = 1.0
+
+        config["preferences"][username] = prefs
+        s3_client.write_object(get_config_file(), yaml.dump(config))
+        cl.user_session.set("user_preferences", prefs)
+
+        await get_chat_settings().send()
 
 
 @cl.on_message
 async def handle_message(message: cl.Message):
-    # Check authentication
-    user = cl.user_session.get("user")
-    if not user or user.identifier == "anonymous":
-        await cl.Message(content="Please authenticate with GitHub to use the food bot.").send()
-        return
-
+    """
+    Handle incoming messages from the user.
+    This function checks if the user is authenticated, retrieves their preferences,
+    and processes the message using the food bot agent.
+    """
     agent = cl.user_session.get("agent")
     prefs = cl.user_session.get("user_preferences", {})
     params_chat = {"user_preferences": prefs}
 
     if prefs.get("distance_preference", False):
-        params_chat.update(
-            {
-                "distance_preference": True,
-                "distance_km": prefs["distance_km"],
-            }
-        )
+        params_chat.update({"distance_preference": True, "distance_km": prefs["distance_km"]})
 
     try:
         msg: cl.Message = cl.Message(content="", author="Assistant")
@@ -215,34 +96,8 @@ async def handle_message(message: cl.Message):
 
         await msg.update()
 
-        if len(str(async_response)) > 512:  # Ask for feedback if the response is detailed
-            await cl.Message(
-                content="Is the recommendation helpful? If not, please provide more details.",
-                author="assistant",
-                actions=[
-                    cl.Action(name="helpful_action", label="✅ Yes, it was helpful", payload={"helpful": True}),
-                    cl.Action(name="helpful_action", label="❌ No, I need something else", payload={"helpful": False}),
-                ],
-            ).send()
-
     except Exception as e:
         await cl.Message(content=f"Error processing message: {e}", author="assistant").send()
-
-
-@cl.action_callback("helpful_action")
-async def handle_helpful_action(action):
-    """
-    Handle the user's feedback on the recommendation.
-    If helpful, thank them. If not, ask for more details.
-    """
-    if action.payload.get("helpful"):
-        await cl.Message(content="Thank you! I'm glad the recommendation was helpful!").send()
-    else:
-        await cl.Message(
-            content="Sorry to hear that! Please provide more details about what you're looking for."
-        ).send()
-
-    await action.remove()
 
 
 @cl.on_settings_update
@@ -275,9 +130,21 @@ async def handle_settings_update(settings):
 
         # Persist back to S3
         config["preferences"][username] = prefs
-        s3_client.write_object(CONFIG_FILE, yaml.dump(config))
+        s3_client.write_object(get_config_file(), yaml.dump(config))
         cl.user_session.set("user_preferences", prefs)
 
         await cl.Message(content="✅ Preferences updated!", author="assistant").send()
     except Exception as e:
         await cl.Message(content=f"Error saving preferences: {e}", author="assistant").send()
+
+
+@cl.on_chat_resume
+async def on_chat_resume(thread):
+    """Handle chat resume event"""
+    pass
+
+
+@cl.on_chat_end
+async def on_chat_end():
+    """Clean up when chat ends"""
+    pass

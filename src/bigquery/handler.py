@@ -17,21 +17,24 @@ class BigQueryHandler:
             project_id (str): GCP project ID.
             credentials_path (str): Path to the service account JSON file.
         """
-        if not project_id:
-            raise ValueError("Project ID is required to initialize BigQueryHandler.")
+        try:
+            if not project_id:
+                raise ValueError("Project ID is required to initialize BigQueryHandler.")
 
-        if not credentials_path:
-            raise ValueError("Please provide a path to the service account JSON file")
-        else:
-            log.success("Using credentials from: {}", credentials_path)
+            if not credentials_path:
+                raise ValueError("Please provide a path to the service account JSON file")
+            else:
+                log.success("Using credentials from: {}", credentials_path)
 
-        self.project_id = project_id
-        self.client = bigquery.Client(
-            credentials=Credentials.from_service_account_file(credentials_path),
-            project=self.project_id,
-        )
+            self.project_id = project_id
+            self.client = bigquery.Client(
+                credentials=Credentials.from_service_account_file(credentials_path),
+                project=self.project_id,
+            )
 
-        log.success("Initialized BigQueryHandler for project: {}", project_id)
+            log.success("Initialized BigQueryHandler for project: {}", project_id)
+        except Exception:
+            log.warning("Any query to BigQuery will fail because the BigQueryHandler is not initialized properly.")
 
     def normalize_query(self, query: str) -> str:
         """

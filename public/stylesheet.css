@@ -8,19 +8,26 @@
     box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
 }
 
+#chat-settings {
+    height: 65%;
+}
+
 #theme-toggle {
     display: none;
 }
 
 #step-candidate_generation_and_ranking,
 #step-enrich_restaurant_recommendations {
-    color: #00af87;
+    color: #f5145f;
+    font-family: var(--font-mono);
 }
 
 #step-candidate_generation_and_ranking::before,
 #step-enrich_restaurant_recommendations::before {
-    color: #ff9800;
-    margin-right: 0.25em;
+    margin-right: 0.5rem;
+    width: 1.25rem;
+    display: inline-block;
+    color: #10b981;
 }
 
 #step-candidate_generation_and_ranking::before {
@@ -29,7 +36,7 @@
 
 #step-enrich_restaurant_recommendations::before {
     content: "⏺";
-    animation: ping 0.85s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    animation: ping 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     animation-delay: 0.5s;
     animation-fill-mode: both;
 }

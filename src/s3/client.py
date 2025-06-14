@@ -14,27 +14,36 @@ class S3Client:
         :param bucket_name: The name of the S3 bucket. If not provided, it will be read from the environment variable AWS_BUCKET_NAME.
         """
         self._required_vars = [
-            "AWS_BUCKET_ENDPOINT_URL",
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_REGION_NAME",
+            "DEV_AWS_ENDPOINT",
+            "APP_AWS_ACCESS_KEY",
+            "APP_AWS_SECRET_KEY",
         ]
-        self._bucket_name = bucket_name if bucket_name else os.getenv("AWS_BUCKET_NAME")
+        self._bucket_name = bucket_name if bucket_name else os.getenv("BUCKET_NAME")
 
         if not self._bucket_name:
-            raise ValueError("Bucket name must be provided or set in environment variable AWS_BUCKET_NAME.")
+            raise ValueError("Bucket name must be provided or set in environment variable BUCKET_NAME.")
 
         if not all(os.getenv(var) for var in self._required_vars):
-            log.warning("One or more required environment variables are not set: %s", self._required_vars)
+            log.warning(f"One or more required environment variables are not set: {self._required_vars}")
 
         self.s3 = boto3.client(
             service_name="s3",
-            endpoint_url=os.getenv("AWS_BUCKET_ENDPOINT_URL"),
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.getenv("AWS_REGION_NAME"),
+            endpoint_url=os.getenv("DEV_AWS_ENDPOINT"),
+            aws_access_key_id=os.getenv("APP_AWS_ACCESS_KEY"),
+            aws_secret_access_key=os.getenv("APP_AWS_SECRET_KEY"),
         )
-        log.success("S3 client initialized for bucket: {}", self._bucket_name)
+
+        try:
+            self.s3.create_bucket(Bucket=self._bucket_name)
+        except self.s3.exceptions.BucketAlreadyExists:
+            log.warning(f"Bucket already exists: {self._bucket_name}")
+        except self.s3.exceptions.BucketAlreadyOwnedByYou:
+            log.warning(f"Bucket already owned by you: {self._bucket_name}")
+        except Exception as e:
+            log.error(f"Error creating bucket: {e}")
+            raise
+
+        log.success(f"S3 client initialized for bucket: {self._bucket_name}")
 
     def list_objects(self) -> List[Dict[str, str]]:
         """List all objects in the S3 bucket."""
@@ -61,13 +70,3 @@ class S3Client:
         except Exception as e:
             log.error(f"Error uploading file: {e}")
             return False
-
-
-if __name__ == "__main__":
-    bucket_name = os.getenv("AWS_BUCKET_NAME")
-    object_key = "secret.yaml"
-    s3_client = S3Client(bucket_name)
-
-    # s3_client.upload_file(object_key)
-    print(s3_client.list_objects())
-    print(s3_client.read_object(object_key))
