@@ -88,6 +88,11 @@ src/
 
 ### ⚡ Quick Start
 
+> [!NOTE]
+> For local development, you can use the provided Docker containers for Qdrant and S3. If you want to use remote services, you can set up your own Qdrant and S3 instances or use the provided credentials in the `.env` file.
+> - For remote services, if you want to use BigQuery, you must put the `sa.json` (service account JSON file) in the root directory and set the `FEATURE_STORAGE_MODE` to `remote` in the `src/helper/vars.py` file. If you want to use local storage, set it to `local`.
+> - For Qdrant and S3, you can set the `QDRANT_*` and `*_AWS_*` environment variables in the `.env` file to your remote service credentials.
+    
 1. **Install dependencies with `uv`**
 
     ```bash
@@ -104,23 +109,15 @@ src/
 
     Change the `OPENAI_API_KEY` to your OpenAI API key.
 
-    > [!NOTE]
-    > If you want to use BigQuery, put the `sa.json` (service account JSON file) in the root directory and set the `FEATURE_STORAGE_MODE` to `remote` in the `src/helper/vars.py` file. If you want to use local storage, set it to `local`.
-
 3. **Start containers (optional - ignore if using remote services)**
 
     If you want to use local Qdrant and S3, you can start the containers using `docker-compose`:
 
     ```bash
-    docker-compose up -d
+    docker compose up -d
     ```
 
-    This will start Qdrant and S3-compatible storage services locally (MinIO).
-    Make sure you have Docker installed and running.
-    If you want to use remote services, you can skip this step.
-
-    > [!NOTE]
-    > If you want to use remote Qdrant and S3, you can set the `QDRANT_*` and `*_AWS_*` environment variables in the `.env` file to your remote service credentials.
+    This will start Qdrant and S3-compatible storage services locally (MinIO). Make sure you have Docker installed and running. If you want to use remote services, you can skip this step.
 
 4. **Initialize Qdrant collections**
 
@@ -142,7 +139,6 @@ src/
 
     This will generate the Prisma client and apply the schema migrations.
 
-    > [!NOTE]
     > Change the `DATABASE_URL` in the `.env` file to your database connection string if you are using a remote database.
 
 6. **Start development server**

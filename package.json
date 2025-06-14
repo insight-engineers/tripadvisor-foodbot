@@ -1,4 +1,10 @@
 {
+  "name": "chainlit-datalayer",
+  "version": "1.0.0",
+  "description": "Chainlit datalayer shows how to log conversations happening on your Chainlit application.",
+  "keywords": [],
+  "author": "Chainlit",
+  "license": "ISC",
   "devDependencies": {
     "prisma": "^6.9.0"
   },
