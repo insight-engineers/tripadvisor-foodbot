@@ -1,14 +1,17 @@
 import base64
 import os
-import re
-import time
 from math import atan2, cos, radians, sin, sqrt
-from typing import Any, Literal, Tuple
+from typing import Literal, Tuple
 
 import requests
 from dotenv import load_dotenv
 
-from src.helper.vars import CONFIG_FILE, FEATURE_STORAGE_MODE, WELCOME_MESSAGE
+from src.helper.vars import CANDIDATE_LIMIT, CONFIG_FILE, FEATURE_STORAGE_MODE, WELCOME_MESSAGE
+
+
+def get_candidate_limit() -> int:
+    """Returns the candidate limit for the chatbot."""
+    return int(CANDIDATE_LIMIT)
 
 
 def load_dotenv_file(dotenv_path):
@@ -36,13 +39,6 @@ def encode_b64_string(string: str) -> str:
     return base64.b64encode(string.encode("utf-8")).decode("utf-8")
 
 
-def generate_streaming_response(response: Any, delay: float = 0.05):
-    """Generator to mimic some LLM response with spaces and newlines preserved"""
-    for part in re.findall(r"\S+\s*", str(response)):
-        yield part
-        time.sleep(delay)
-
-
 def get_welcome_message(name: str = "food lover") -> str:
     """Returns a welcome message for the chatbot."""
     return WELCOME_MESSAGE.format(name=name)
@@ -59,15 +55,22 @@ def get_config_file() -> str:
 
 
 def get_admin_account() -> Tuple[str, str, str]:
-    """Returns the admin username, password encoded in base64 as tuple and display name."""
+    """Returns the admin username, password encoded in base64 as tuple"""
     username = os.getenv("CHAINLIT_ADMIN_USERNAME", "admin")
     password = os.getenv("CHAINLIT_ADMIN_PASSWORD", "admin")
-    display_name = os.getenv("CHAINLIT_ADMIN_DISPLAY_NAME", "Admin")
 
-    if not password or not username or not display_name:
-        raise ValueError("CHAINLIT_ADMIN_USERNAME, CHAINLIT_ADMIN_PASSWORD, or CHAINLIT_ADMIN_DISPLAY_NAME environment variable is not set.")
+    if not password or not username:
+        raise ValueError("CHAINLIT_ADMIN_USERNAME, CHAINLIT_ADMIN_PASSWORD is not set in the environment variables.")
 
-    return (display_name, encode_b64_string(username), encode_b64_string(password))
+    return (encode_b64_string(username), encode_b64_string(password))
+
+
+def get_display_name() -> str:
+    """Returns the display name for the admin account."""
+    display_name = os.getenv("CHAINLIT_ADMIN_DISPLAY_NAME")
+    if not display_name:
+        raise ValueError("CHAINLIT_ADMIN_DISPLAY_NAME is not set in the environment variables.")
+    return display_name
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):

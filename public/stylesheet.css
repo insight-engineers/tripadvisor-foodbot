@@ -5,51 +5,115 @@
 }
 
 #message-composer {
+    cursor: text;
     box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    background: none;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+#message-composer:hover {
+    border-color: #f5145f;
+    box-shadow: 0 10px 40px rgba(245, 20, 95, 0.15), 
+                0 4px 16px rgba(100, 100, 111, 0.3);
+    transform: translateY(-3px);
+}
+
+#message-composer:focus-within {
+    border-color: #f5145f;
+    box-shadow: 0 0 0 3px rgba(245, 20, 95, 0.1),
+                0 12px 45px rgba(245, 20, 95, 0.2);
+    transform: translateY(-6px);
+    outline: none;
+}
+
 
 #chat-settings {
     height: 65%;
 }
 
-#theme-toggle {
-    display: none;
+#theme-toggle, .undefined, .positive-feedback-off, .negative-feedback-off {
+    display: none !important;
 }
 
-#step-candidate_generation_and_ranking,
+#step-update_preferences,
+#step-candidate_generation,
+#step-scoring_and_ranking,
 #step-enrich_restaurant_recommendations {
-    color: #f5145f;
+    display: inline-flex;
+    align-items: center;
+    max-width:fit-content;
     font-family: var(--font-mono);
+    font-size: 14px;
+    color: #f5145f;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 4px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-#step-candidate_generation_and_ranking::before,
+#step-update_preferences:hover,
+#step-candidate_generation:hover,
+#step-scoring_and_ranking:hover,
+#step-enrich_restaurant_recommendations:hover {
+    border-color: #f65087;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+#step-update_preferences::before,
+#step-candidate_generation::before,
+#step-scoring_and_ranking::before,
 #step-enrich_restaurant_recommendations::before {
-    margin-right: 0.5rem;
-    width: 1.25rem;
-    display: inline-block;
+    content: "●";
+    margin-right: 8px;
+    color: #f5145f;
+}
+
+#step-enrich_restaurant_recommendations::before {
     color: #10b981;
+    animation: pulse 1.5s infinite;
 }
 
-#step-candidate_generation_and_ranking::before {
-    content: "👑";
+
+#assistant-card {
+    position: relative;
+        overflow: hidden;
+    }
+
+#assistant-card::before {
+    content: "";
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    width: 120%;
+    height: 120%;
+    background: conic-gradient(transparent, rgba(245, 20, 95, 0.065),  rgba(185, 215, 255, 0.095), transparent);
+    animation: neonFloat 5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+    filter: blur(85px);
+    z-index: 0;
 }
 
-#step-enrich_restaurant_recommendations::before {
-    content: "⏺";
-    animation: ping 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    animation-delay: 0.5s;
-    animation-fill-mode: both;
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
-@keyframes ping {
+@keyframes neonFloat {
     0% {
-        transform: scale(0.75);
-        opacity: 1;
+        transform: translateY(-10px) rotate(0deg);
     }
 
-    75%,
-    100% {
-        transform: scale(1.75);
-        opacity: 0.2;
+    50% {
+        transform: translateY(-20px) rotate(180deg);
     }
+
+    100% {
+        transform: translateY(0) rotate(360deg);
+    }
+    
 }

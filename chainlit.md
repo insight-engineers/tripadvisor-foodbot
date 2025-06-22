@@ -1,4 +1,4 @@
-# Welcome to the TripAdvisor Chatbot! 🎉
+## Welcome to the TripAdvisor Chatbot! 🎉
 
 Hello, Food Explorer! 👋 We're thrilled to have you here. This chatbot is your ultimate companion for discovering the best dining experiences in **Ho Chi Minh City** and **Hanoi**! 🏙️🍴 Whether you're craving street food delights or fine dining, we've got you covered. 🌟
 

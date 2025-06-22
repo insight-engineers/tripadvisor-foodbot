@@ -1,32 +1,26 @@
+import asyncio
+
 import chainlit as cl
+import chainlit.data as cl_data
 import yaml
 
-from src.helper.utils import (
-    encode_b64_string,
-    generate_streaming_response,
-    get_admin_account,
-    get_config_file,
-)
-from src.main import (
-    get_chat_settings,
-    init_user_session,
-    s3_client,
-)
+from src.chat.chainlit import AskActionMessage
+from src.chat.utils import generate_conv_summary, generate_next_response, generate_streaming_response
+from src.helper.utils import encode_b64_string, get_admin_account, get_config_file, get_display_name
+from src.main import get_chat_settings, init_user_session, remove_next_response_actions
 
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
     session_username, session_password = encode_b64_string(username), encode_b64_string(password)
-    admin_name_display, admin_username, admin_password = get_admin_account()
+    admin_username, admin_password = get_admin_account()
 
     if (session_username, session_password) == (admin_username, admin_password):
         return cl.User(
             identifier=admin_username,
-            display_name=admin_name_display,
+            display_name=get_display_name(),
             metadata={"role": "admin", "provider": "credentials"},
         )
-    else:
-        return None
 
 
 @cl.on_chat_start
@@ -40,10 +34,24 @@ async def on_chat_start():
         await cl.Message(content="Error initializing the chat. Please try again later.").send()
         return
 
-    await cl.Message(content=welcome_msg, author="assistant").send()
+    await cl.Message(
+        content="",
+        type="system_message",
+        elements=[
+            cl.CustomElement(
+                **{
+                    "name": "AssistantCard",
+                    "props": {
+                        "content": welcome_msg,
+                        "author": "assistant",
+                    },
+                }
+            )
+        ],
+    ).send()
     await get_chat_settings().send()
 
-    res = await cl.AskActionMessage(
+    res = await AskActionMessage(
         content="🤔 What vibe are you looking for today?",
         actions=[
             cl.Action(name="food", payload={"score": "food_score"}, label="🍕 I want amazing food!"),
@@ -58,40 +66,62 @@ async def on_chat_start():
     if res and res.get("payload"):
         selected_score = res["payload"]["score"]
 
-        config = cl.user_session.get("config")
-        username = cl.user_session.get("username")
-        prefs = cl.user_session.get("user_preferences", {})
-
-        for score in ["food_score", "ambience_score", "price_score", "service_score"]:
-            prefs[score] = 0.5
-        prefs[selected_score] = 1.0
-
-        config["preferences"][username] = prefs
-        s3_client.write_object(get_config_file(), yaml.dump(config))
-        cl.user_session.set("user_preferences", prefs)
-
+        await update_preferences(selected_score)
         await get_chat_settings().send()
 
 
 @cl.on_message
-async def handle_message(message: cl.Message):
+async def on_message(message: cl.Message):
     """
     Handle incoming messages from the user.
     This function checks if the user is authenticated, retrieves their preferences,
     and processes the message using the food bot agent.
     """
+    # -- Agent processing message --
     agent = cl.user_session.get("agent")
     prefs = cl.user_session.get("user_preferences", {})
     params_chat = {"user_preferences": prefs}
+
+    # -- If any next user response actions are set, remove them --
+    await remove_next_response_actions()
 
     if prefs.get("distance_preference", False):
         params_chat.update({"distance_preference": True, "distance_km": prefs["distance_km"]})
 
     try:
-        msg: cl.Message = cl.Message(content="", author="Assistant")
-        async_response = await cl.make_async(agent.params_chat)(message.content, **params_chat)
+        # -- Generate conversation summary and update chat title --
+        cl.user_session.set("next_response_actions", [])
+        thread_data = await cl_data._data_layer.get_thread(message.thread_id)
+        message_history = [
+            {"content": step["output"][:500], "role": "user" if step.get("type") == "user_message" else "assistant"}
+            for step in thread_data["steps"][1:]  # Skip the first step which is the system message
+            if step.get("type") in ["user_message", "assistant_message"]
+        ]
 
-        for chunk in generate_streaming_response(async_response):
+        if len(message_history) > 0:
+            print(f"Actual conversation: {message_history}")
+            conversation_title = len(thread_data["name"].split())
+
+            if conversation_title < 2 and len(message_history) > 1:
+                conv_summary = await generate_conv_summary(message_history)
+                chat_title = conv_summary.title().replace(".", "")
+                await cl.context.emitter.init_thread(chat_title)
+
+            next_response = await generate_next_response(message_history)
+            next_response_actions = [
+                cl.Action(
+                    name="next_response",
+                    payload={"user_response": response},
+                    label=response,
+                )
+                for response in next_response.get("next_responses", [])
+            ]
+
+            cl.user_session.set("next_response_actions", next_response_actions)
+
+        msg = cl.Message(content="", author="assistant", actions=cl.user_session.get("next_response_actions"))
+        async_response = await cl.make_async(agent.params_chat)(message.content, **params_chat)
+        for chunk in generate_streaming_response(async_response, 0.025):
             await msg.stream_token(chunk)
 
         await msg.update()
@@ -100,23 +130,31 @@ async def handle_message(message: cl.Message):
         await cl.Message(content=f"Error processing message: {e}", author="assistant").send()
 
 
+@cl.action_callback("next_response")
+async def handle_next_response_action(action: cl.Action):
+    """
+    Handle the next response action when the user selects a response.
+    This function updates the chat with the selected response and sends a follow-up message.
+    """
+    user_response = action.payload.get("user_response", "")
+    user_message = cl.Message(content=user_response, author="user", type="user_message")
+
+    await remove_next_response_actions()
+    await user_message.send()
+    await on_message(user_message)
+
+
 @cl.on_settings_update
 async def handle_settings_update(settings):
     """
     Only update the preferences dict in memory & in S3. Do NOT re-init the agent here.
     """
-    # Check authentication
-    user = cl.user_session.get("user")
-    if not user or user.identifier == "anonymous":
-        await cl.Message(content="Please authenticate to update preferences.").send()
-        return
-
     try:
         config = cl.user_session.get("config")
-        username = cl.user_session.get("username")
-        prefs = cl.user_session.get("user_preferences", {})
+        username: str = cl.user_session.get("username")
+        prefs: dict = cl.user_session.get("user_preferences", {})
+        s3_client = cl.user_session.get("s3_client")
 
-        # Overwrite only fields that came from the UI; keep others untouched
         prefs.update(
             {
                 "food_score": settings.get("food_score", prefs["food_score"]),
@@ -128,23 +166,51 @@ async def handle_settings_update(settings):
             }
         )
 
-        # Persist back to S3
         config["preferences"][username] = prefs
         s3_client.write_object(get_config_file(), yaml.dump(config))
         cl.user_session.set("user_preferences", prefs)
 
-        await cl.Message(content="✅ Preferences updated!", author="assistant").send()
+        await cl.Message(content="✅ Preferences updated!", author="assistant", type="system_message").send()
     except Exception as e:
-        await cl.Message(content=f"Error saving preferences: {e}", author="assistant").send()
+        await cl.Message(content=f"Error saving preferences: {e}", author="assistant", type="system_message").send()
 
 
 @cl.on_chat_resume
 async def on_chat_resume(thread):
     """Handle chat resume event"""
-    pass
+    if not thread or not cl.user_session.get("agent"):
+        await init_user_session()
 
 
 @cl.on_chat_end
 async def on_chat_end():
     """Clean up when chat ends"""
-    pass
+    pass  # no-op
+
+
+@cl.step(type="tool", name="update_preferences")
+async def update_preferences(selected_score: str):
+    config = cl.user_session.get("config")
+    username = cl.user_session.get("username")
+    prefs = cl.user_session.get("user_preferences", {})
+    s3_client = cl.user_session.get("s3_client")
+
+    messages = {
+        "food_score": "Great! Let's find amazing food! 🍕 What's on your mind?",
+        "ambience_score": "Perfect! I'll find places with great vibes! 🌟 What are you thinking?",
+        "price_score": "Smart! I'll find budget-friendly options! 💸 What's your idea?",
+        "service_score": "Excellent! I'll find places with top service! 👑 What can I help you with?",
+    }
+
+    prefs[selected_score] = max(prefs.get(selected_score, 0.5) + 0.1, 1.0)
+
+    config["preferences"][username] = prefs
+    s3_client.write_object(get_config_file(), yaml.dump(config))
+    cl.user_session.set("user_preferences", prefs)
+
+    await asyncio.sleep(1.0)
+    await cl.Message(
+        content=messages.get(selected_score, "Preferences updated successfully!"),
+        type="system_message",
+    ).send()
+    return prefs

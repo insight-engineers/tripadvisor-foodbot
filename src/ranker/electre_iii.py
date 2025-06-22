@@ -1,3 +1,4 @@
+import time
 from typing import Dict
 
 import numba as nb
@@ -89,15 +90,22 @@ def build_electre_iii(
         'query_matching_score': {'q': 0.05, 'p': 0.10, 'v': 0.20}
     }
     """
-    score_columns = list(user_preferences.keys())
-    weights_arr = np.array([user_preferences[c] for c in score_columns], dtype=np.float64)
-    sum_w = weights_arr.sum()
-    q_arr = np.array([thresholds[c]["q"] for c in score_columns], dtype=np.float64)
-    p_arr = np.array([thresholds[c]["p"] for c in score_columns], dtype=np.float64)
-    v_arr = np.array([thresholds[c]["v"] for c in score_columns], dtype=np.float64)
-    A = dataframe[score_columns].to_numpy(dtype=np.float64)
-    outranking = build_outranking(A, weights_arr, sum_w, q_arr, p_arr, v_arr)
-    net_cred = outranking.sum(axis=1) - outranking.sum(axis=0)
-    dataframe["electre_score"] = net_cred
-    dataframe["electre_rank"] = rankdata(-net_cred, method="min")
-    return dataframe
+    try:
+        dataframe = dataframe.copy()
+        score_columns = list(user_preferences.keys())
+        weights_arr = np.array([user_preferences[c] for c in score_columns], dtype=np.float64)
+        sum_w = weights_arr.sum()
+        q_arr = np.array([thresholds[c]["q"] for c in score_columns], dtype=np.float64)
+        p_arr = np.array([thresholds[c]["p"] for c in score_columns], dtype=np.float64)
+        v_arr = np.array([thresholds[c]["v"] for c in score_columns], dtype=np.float64)
+        A = dataframe[score_columns].to_numpy(dtype=np.float64)
+        outranking = build_outranking(A, weights_arr, sum_w, q_arr, p_arr, v_arr)
+        net_cred = outranking.sum(axis=1) - outranking.sum(axis=0)
+        dataframe["electre_score"] = net_cred
+        dataframe["electre_rank"] = rankdata(-net_cred, method="min")
+        return dataframe
+    except Exception as e:
+        print(f"Error in build_electre_iii: {e}")
+        return pd.DataFrame()
+    finally:
+        time.sleep(1.5)

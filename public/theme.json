@@ -1,16 +1,16 @@
 {
     "custom_fonts": [
-        "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700&display=swap",
-        "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&display=swap"
+        "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+        "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
     ],
     "variables": {
         "light": {
-            "--font-sans": "'Geist', sans-serif",
-            "--font-mono": "'Geist Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
+            "--font-sans": "'Inter', sans-serif",
+            "--font-mono": "'JetBrains Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
         },
         "dark": {
-            "--font-sans": "'Geist', sans-serif",
-            "--font-mono": "'Geist Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
+            "--font-sans": "'Inter', sans-serif",
+            "--font-mono": "'JetBrains Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
         }
     }
 }

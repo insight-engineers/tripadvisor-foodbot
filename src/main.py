@@ -9,13 +9,11 @@ from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.storage.chat_store import SimpleChatStore
 
 from src.chat.agent import ParseParamsAgent
-from src.chat.callback import ChainlitStatusCallback
+from src.chat.chainlit import ChainlitStatusCallback
 from src.chat.client import agent_llm_model
-from src.chat.tools import candidate_generation_and_ranking_tool, enrich_restaurant_recommendations_tool
-from src.helper.utils import get_config_file, get_welcome_message
+from src.chat.tools import candidate_generation_tool, enrich_restaurant_recommendations_tool, scoring_and_ranking_tool
+from src.helper.utils import get_config_file, get_display_name, get_welcome_message
 from src.s3.client import S3Client
-
-s3_client = S3Client(bucket_name=os.getenv("BUCKET_NAME"))
 
 
 # -- Wrapper function to generate the foodbot agent --
@@ -43,7 +41,8 @@ def generate_foodbot_agent(
     try:
         agent_kwargs = {
             "tools": [
-                candidate_generation_and_ranking_tool,
+                candidate_generation_tool,
+                scoring_and_ranking_tool,
                 enrich_restaurant_recommendations_tool,
             ],
             "llm": agent_llm_model,
@@ -54,6 +53,38 @@ def generate_foodbot_agent(
         return ParseParamsAgent.from_tools(**agent_kwargs)
     except Exception as e:
         raise RuntimeError(f"Failed to initialize agent: {str(e)}")
+
+
+def get_chat_settings() -> cl.ChatSettings:
+    """
+    Generate chat settings for the user preferences.
+    """
+    prefs = cl.user_session.get("user_preferences", {})
+    slider_score_settings = {"min": 0.0, "max": 1.0, "step": 0.05}
+
+    return cl.ChatSettings(
+        [
+            cliw.Slider(id="food_score", label="🍽️ Food Score", initial=prefs["food_score"], **slider_score_settings),
+            cliw.Slider(id="ambience_score", label="✨ Ambience Score", initial=prefs["ambience_score"], **slider_score_settings),
+            cliw.Slider(id="price_score", label="💰 Price Score", initial=prefs["price_score"], **slider_score_settings),
+            cliw.Slider(id="service_score", label="🤝 Service Score", initial=prefs["service_score"], **slider_score_settings),
+            cliw.Switch(id="distance_preference", label="📍 Prefer Nearby Restaurants", initial=prefs.get("distance_preference", False)),
+            cliw.Slider(id="max_distance", label="🚗 Max Distance (km)", initial=prefs.get("distance_km", 15), min=1, max=30, step=1),
+        ]
+    )
+
+
+# -- Function to remove next response actions from user session --
+async def remove_next_response_actions():
+    """
+    Remove any next response actions from the user session.
+    This is useful to clear previous actions when starting a new conversation.
+    """
+    next_response_actions: list[cl.Action] = cl.user_session.get("next_response_actions", [])
+    cl.user_session.set("next_response_actions", [])
+
+    for action in next_response_actions:
+        await action.remove()
 
 
 # -- Function to initialize user session and preferences --
@@ -69,7 +100,7 @@ async def init_user_session():
     # -- 1. Get authenticated user
     user = cl.user_session.get("user")
     username = user.identifier
-
+    s3_client = S3Client(bucket_name=os.getenv("BUCKET_NAME"))
     # -- 2. Load/initialize config file on S3
     try:
         objects = s3_client.list_objects()
@@ -106,32 +137,19 @@ async def init_user_session():
 
     # -- 4. Agent instantiation
     try:
+        if cl.user_session.get("agent"):
+            cl.user_session.set("agent", None)
+
         agent = generate_foodbot_agent(chat_store_token_limit=4096, callback="chainlit", verbose=True)
         cl.user_session.set("agent", agent)
+        cl.user_session.set("s3_client", s3_client)
+
     except Exception as e:
         await cl.Message(content=f"Error initializing agent: {e}").send()
         return None, None
 
-    # -- 5. Welcome message with user's name
-    display_name = user.display_name or "food lover"
-    wm = get_welcome_message(name=display_name)
-    return username, wm
+    # -- 5. `Welcome` message with user's name
+    display_name = get_display_name() or "food lover"
+    welcome_msg = get_welcome_message(name=display_name)
 
-
-def get_chat_settings() -> cl.ChatSettings:
-    """
-    Generate chat settings for the user preferences.
-    """
-    prefs = cl.user_session.get("user_preferences", {})
-    slider_score_settings = {"min": 0.0, "max": 1.0, "step": 0.05}
-
-    return cl.ChatSettings(
-        [
-            cliw.Slider(id="food_score", label="🍽️ Food Score", initial=prefs["food_score"], **slider_score_settings),
-            cliw.Slider(id="ambience_score", label="✨ Ambience Score", initial=prefs["ambience_score"], **slider_score_settings),
-            cliw.Slider(id="price_score", label="💰 Price Score", initial=prefs["price_score"], **slider_score_settings),
-            cliw.Slider(id="service_score", label="🤝 Service Score", initial=prefs["service_score"], **slider_score_settings),
-            cliw.Switch(id="distance_preference", label="📍 Prefer Nearby Restaurants", initial=prefs.get("distance_preference", False)),
-            cliw.Slider(id="max_distance", label="🚗 Max Distance (km)", initial=prefs.get("distance_km", 15), min=1, max=30, step=1),
-        ]
-    )
+    return username, welcome_msg

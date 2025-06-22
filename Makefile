@@ -3,12 +3,14 @@ export CHAINLIT_FILE_PATH := _chainlit.py
 
 # development
 run:
+	@docker compose up -d
 	@if ! grep -q "CHAINLIT_AUTH_SECRET" .env 2>/dev/null; then \
 		uv run chainlit create-secret >> .env; \
 	fi
 	@uv run chainlit run $(CHAINLIT_FILE_PATH) -w
 
 db:
+	@docker compose up -d
 	@npx prisma migrate deploy
 	@npx prisma db push
 	@npx prisma studio

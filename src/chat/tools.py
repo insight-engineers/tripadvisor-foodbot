@@ -1,3 +1,4 @@
+import math
 import os
 from typing import Annotated, Any, Dict, List, Literal
 
@@ -10,27 +11,27 @@ from tabulate import tabulate
 from chat.models import RestaurantsFinalized
 from src.chat.client import bigquery_client, core_llm_model, qdrant_client_geolocation, qdrant_client_location
 from src.chat.prompt import ENRICH_PROMPT
-from src.helper.utils import encode_url, get_feature_storage_mode, normalize_weights
+from src.helper.utils import encode_url, get_candidate_limit, get_feature_storage_mode, normalize_weights
 from src.helper.vars import OPENAI_MODEL
 from src.ranker.electre_iii import build_electre_iii
 from src.ranker.scoring import compute_distance_score, compute_normalized_criterion_score
 
 
-def candidate_generation_and_ranking(
+def scoring_and_ranking(
     english_natural_query: str,
     location_natural_query: str = "",
     city_filter: Literal["Ha Noi", "Ho Chi Minh", "Whatever"] = "Whatever",
     kwargs_dict: Dict[str, Any] = None,
-) -> List[str]:
+) -> pd.DataFrame:
     """
-    Retrieves the top-K restaurants that match the user's query.
+    Retrieves the restaurants that match the user's query.
     The english_natural_query should be a short and concise information containing only the key information (remove speech words or noise, verbs, etc).
     If key information is missing (e.g., city), prompt the user for clarification about location preference, like at Ha Noi or Ho Chi Minh City, near which ward or district, etc.
     location_natural_query can be skipped input if the user has no preference about the location other than the city.
     """
     log.info("Candidate generation using Qdrant")
-    top_k = 5
-    candidate_limit = top_k * 100
+    candidate_limit = get_candidate_limit()
+    top_k: int = max(1, math.ceil(candidate_limit / 100))
     decoded_query = unidecode.unidecode(english_natural_query)
 
     search_restaurants_kwargs = {"natural_query": decoded_query}
@@ -87,13 +88,13 @@ def candidate_generation_and_ranking(
     location_with_electre_rank = build_electre_iii(locations_with_score, user_preferences, thresholds)
 
     log.success(f"Successfully ranked restaurants using ELECTRE III. Get {top_k} recommendations")
+    location_top_k = location_with_electre_rank.head(top_k)
     score_columns = [col for col in location_with_electre_rank.columns if col.endswith("_score")]
     selected_columns = ["location_id", "location_name"] + score_columns
-    location_top_k = location_with_electre_rank[selected_columns].head(top_k)
+    location_top_k = location_top_k.sort_values(by="electre_rank").reset_index(drop=True)
+    location_top_k = location_top_k[selected_columns].drop(columns=["electre_score"], errors="ignore")
 
-    print(tabulate(location_top_k, headers="keys", tablefmt="psql"))
-    location_with_electre_rank = location_top_k.to_dict("records")
-    return [loc["location_id"] for loc in location_with_electre_rank]
+    return tabulate(location_top_k, headers="keys", tablefmt="github")
 
 
 def enrich_restaurant_recommendations(
@@ -103,6 +104,7 @@ def enrich_restaurant_recommendations(
 ) -> str:
     """
     Enrich the restaurant recommendations with more information.
+    TRUST the previous function, MUST get full ids.
     ONLY use this function at the end of the pipeline.
     """
     feature_storage_mode = get_feature_storage_mode()
@@ -130,7 +132,7 @@ def enrich_restaurant_recommendations(
         check_valid_value = lambda x: (True if x is not None and str(x).strip() not in ["", "-1"] else False)
         query_result = [{k: v for k, v in loc.items() if check_valid_value(v)} for loc in query_result]
 
-    context_data = [f"User Query: {original_user_message}"]
+    context_data = [f"user_query: {original_user_message}"]
     context_data.extend(
         [
             str(
@@ -176,8 +178,6 @@ def enrich_restaurant_recommendations(
 
     short_desc_map = {str(item["location_id"]): item["short_description"] for item in restaurant_description.get("restaurants", [])}
 
-    price_emoji_map = {"Cheap Eats": "💰", "Mid-range": "💰💰", "Fine Dining": "💰💰💰"}
-
     restaurant_output = "\n".join(
         [
             f"{restaurant_description['begin_description']}\n\n---\n",
@@ -188,26 +188,10 @@ def enrich_restaurant_recommendations(
                     + "".join(
                         [
                             (f"- 📍 {loc.get('address', '')}\n" if "address" in loc else ""),
-                            (
-                                f"- ⭐️ {loc.get('location_overall_rate', '')}\n"
-                                if "location_overall_rate" in loc and str(loc.get("location_overall_rate")) != "-1.0"
-                                else ""
-                            ),
-                            (
-                                f"- Price Range: {price_emoji_map.get(loc.get('price_range'))}\n"
-                                if "price_range" in loc and loc.get("price_range") != "Not Defined"
-                                else ""
-                            ),
-                            (
-                                f"- Google Maps: [click here to open Google Maps]({encode_url(loc.get('location_map', ''))})\n"
-                                if "location_map" in loc
-                                else ""
-                            ),
-                            (
-                                f"- Restaurant Website: [click here to open Restaurant Website]({encode_url(loc.get('location_url', ''))})\n"
-                                if "location_url" in loc
-                                else ""
-                            ),
+                            (f"- ⭐️ {loc.get('location_overall_rate')}\n" if "location_overall_rate" in loc else ""),
+                            (f"- 💰 Price: {loc.get('price_range')}\n" if "price_range" in loc and loc.get("price_range") != "Not Defined" else ""),
+                            (f"- [Google Maps]({encode_url(loc.get('location_map', ''))})\n" if "location_map" in loc else ""),
+                            (f"- [Restaurant Website]({encode_url(loc.get('location_url', ''))})\n" if "location_url" in loc else ""),
                             (f"![{loc.get('location_name', '')}]({loc.get('image_url', '')}?w=500&h=300&s=1)\n" if "image_url" in loc else ""),
                         ]
                     )
@@ -221,11 +205,28 @@ def enrich_restaurant_recommendations(
     return restaurant_output
 
 
-candidate_generation_and_ranking_tool = FunctionTool.from_defaults(
-    fn=candidate_generation_and_ranking,
+def candidate_generation(
+    kwargs_dict: Dict[str, Any] = None,
+) -> int:
+    """
+    Always use this function ONCE before scoring_and_ranking to get number of candidates.
+    """
+    log.info("Generating candidate limit for the chatbot")
+    candidate_limit = get_candidate_limit()
+
+    if not isinstance(candidate_limit, int) or candidate_limit <= 0:
+        log.error(f"Invalid candidate limit: {candidate_limit}. Must be a positive integer.")
+        raise ValueError("Candidate limit must be a positive integer.")
+
+    return {"candidate_limit": candidate_limit, "message": "Candidate sets are generated successfully!"}
+
+
+scoring_and_ranking_tool = FunctionTool.from_defaults(
+    fn=scoring_and_ranking,
     return_direct=False,
 )
 enrich_restaurant_recommendations_tool = FunctionTool.from_defaults(
     fn=enrich_restaurant_recommendations,
     return_direct=True,
 )
+candidate_generation_tool = FunctionTool.from_defaults(fn=candidate_generation, return_direct=False)

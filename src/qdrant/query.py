@@ -67,7 +67,10 @@ class QdrantQuery(QdrantBase):
 
             query_filter = {
                 "must": filters,
-                "must_not": [{"key": "review_count", "match": {"value": 0}}],
+                "must_not": [
+                    {"key": "review_count", "match": {"value": 0}},
+                    {"key": "review_count", "match": {"value": 1}},
+                ],
             }
             search_result = self.client.search(
                 collection_name=self.collection_name,

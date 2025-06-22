@@ -12,3 +12,7 @@ class RestaurantsFinalized(BaseModel):
     begin_description: str
     restaurants: List[RestaurantDescription]
     end_description_with_follow_up: str
+
+
+class NextResponse(BaseModel):
+    next_responses: List[str]

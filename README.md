@@ -65,7 +65,7 @@ src/
 
 - LlamaIndex RAG implementation
 - Custom tools for:
-  - 🥇 `candidate_generation_and_ranking`: generate candidate restaurants and rank them using MCDA
+  - 🥇 `scoring_and_ranking`: generate candidate restaurants and rank them using MCDA
   - 📝 `enrich_restaurant_recommendations`: enrich recommendations with more information and generate the final natural response
 - 🔄 Streaming response handlers for tool callbacks
 - 🧠 Context management with chat history
