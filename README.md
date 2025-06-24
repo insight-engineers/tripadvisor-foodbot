@@ -2,6 +2,8 @@
 
 ![python](https://img.shields.io/badge/python-3.11-blue?style=for-the-badge) ![package-manager](https://img.shields.io/badge/package_manager-uv-green?style=for-the-badge) ![GitHub last commit](https://img.shields.io/github/last-commit/insight-engineers/tripadvisor-foodbot?style=for-the-badge)
 
+https://github.com/user-attachments/assets/2eefc1b1-018f-4249-88d9-f9b9f606d761
+
 ## 📝 Overview
 
 > [!NOTE]
@@ -13,34 +15,35 @@ A next-generation restaurant recommendation system implementing **RAG (Retrieval
 
 ## 🚀 Core Components
 
-- 🔍 **Vector Search**: Qdrant with FastEmbed for dense retrieval
-- 🏆 **MCDA Engine**: ELECTRE III implementation for ranking restaurants
-- 🤖 **LLM Integration**: OpenAI API with streaming response to generate final natural responses
-- 🗄️ **Data Layer**: BigQuery for structured data + Qdrant collections
-- 🧑‍💻 **Agent Framework**: LlamaIndex with custom tools and callbacks
+- Vector Search: Qdrant with FastEmbed for dense retrieval
+- MCDA Engine: ELECTRE III implementation for ranking restaurants
+- LLM Integration: OpenAI API with streaming response to generate final natural responses
+- Data Layer: BigQuery for structured data + Qdrant collections
+- Agent Framework: LlamaIndex with custom tools and callbacks
 
 ---
 
 ## ⚙️ Technical Implementation
 
-### 🧬 Vector Search Pipeline
+### Vector Search Pipeline
 
-- ⚡ FastEmbed for dense embeddings generation
-- 🗃️ Qdrant collections for restaurant vectors
-- 🔗 Hybrid search combining semantic and metadata filtering
+- FastEmbed for dense embeddings generation
+- Qdrant collections for restaurant vectors
+- Hybrid search combining semantic and metadata filtering
 
-### 🏅 MCDA Implementation
+### MCDA Implementation
 
-- 🧮 **ELECTRE III** algorithm for restaurant ranking
-- 🎚️ Custom concordance/discordance thresholds
-- 📊 Multi-criteria evaluation:
-  - 🍲 Food quality (delicious, fresh, etc.)
-  - 💸 Price sensitivity (affordable, expensive, etc.)
-  - 🛋️ Ambience (quiet, cozy, etc.)
-  - 🧑‍🍳 Service (friendly, fast, polite, etc.)
-  - 📍 Distance to user location (using GPS)
-  - 🔎 Query matching (using `cosine similarity`)
-  - 😊 Review sentiment (positive, negative, etc.)
+- **ELECTRE III** algorithm for restaurant ranking
+- Custom concordance/discordance thresholds
+- Multi-criteria evaluation:
+    - Food quality (delicious, fresh, etc.)
+    - Price sensitivity (affordable, expensive, etc.)
+    - Ambience (quiet, cozy, etc.)
+    - Service (friendly, fast, polite, etc.)
+    - Distance to user location (using distance mapping)
+    - Query matching (using `cosine similarity`)
+
+> Pre-processing before ranking: Convert review sentiment (positive, negative, etc.) to numerical scores, then apply ELECTRE III to rank restaurants based on user preferences.
 
 > [!IMPORTANT]
 > ⚡ Because **ELECTRE III** is a **decision analysis** algorithm calculated based on lots of matrix operations, it can take significant time to rank restaurants with `numpy`. To improve performance and user experience, we use `numba` to speed up the ranking process by compiling the `numpy`-based functions with `njit` (`@njit` - alias for `@jit(nopython=True)`). This enables our Python functions to run at near-C speed.
@@ -65,10 +68,38 @@ src/
 
 - LlamaIndex RAG implementation
 - Custom tools for:
-  - 🥇 `scoring_and_ranking`: generate candidate restaurants and rank them using MCDA
-  - 📝 `enrich_restaurant_recommendations`: enrich recommendations with more information and generate the final natural response
-- 🔄 Streaming response handlers for tool callbacks
-- 🧠 Context management with chat history
+  - `scoring_and_ranking`: generate candidate restaurants and rank them using MCDA
+  - `enrich_restaurant_recommendations`: enrich recommendations with more information and generate the final natural response
+- Streaming response handlers for tool callbacks
+- Context management with chat history
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant LlamaAgent as LlamaIndex Agent
+    participant Qdrant as Qdrant Vector DB
+    participant BigQuery as BigQuery Data Layer
+    participant ELECTRE as ELECTRE III Ranker
+
+    Note right of User: Submit restaurant query<br/>with weights profile
+    User->>LlamaAgent: ("Find Korean BBQ with cozy vibe")
+    Note right of LlamaAgent: Vector Search & Candidate Generation
+    LlamaAgent->>+Qdrant: Hybrid search query<br/>(semantic + metadata filters)
+    Qdrant->>+Qdrant: Search restaurant vectors<br/>(cosine similarity)
+    Qdrant-->>-LlamaAgent: Return 100*K candidate restaurants<br/>(with similarity scores)
+
+    LlamaAgent->>+ELECTRE: Scoring and Ranking Phase
+    Note right of LlamaAgent: MCDA Ranking with ELECTRE III
+    ELECTRE->>+ELECTRE: Calculate criteria matrix<br/>(Food Quality, Price, Ambience,<br/>Service, Distance, Query Match)
+    ELECTRE->>+ELECTRE: Apply ELECTRE III algorithm<br/>with weights set
+    ELECTRE-->>-LlamaAgent: Return top-K restaurants
+    Note right of LlamaAgent: Data Enrichment Phase
+    LlamaAgent->>+BigQuery: Query structured metadata on BigQuery<br/>(fs_tripadvisor)
+    BigQuery->>+BigQuery: Fetch details (address, image, website,...)
+    BigQuery-->>-LlamaAgent: Return enriched data
+    Note right of LlamaAgent: Generate Final Response
+    LlamaAgent->>User: Deliver personalized<br/>restaurant recommendations
+```
 
 ---
 
@@ -153,7 +184,7 @@ Check your `http://localhost:8000` for the LlamaIndex agent UI.
 
 ### 📦 Dependencies
 
-This project uses `uv` as the package manager. Dependencies are managed in the `uv` configuration file (`uv.yaml`).
+This project uses `uv` as the package manager. Dependencies are managed in the `uv` configuration file (`pyproject.toml`).
 
 - Core: `llama-index`, `fastembed`, `qdrant-client`
 - Data: `google-cloud-bigquery`, `pandas`
