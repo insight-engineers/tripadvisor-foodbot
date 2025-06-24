@@ -19,12 +19,12 @@ format:
 	@uv run ruff check --fix .
 	@uv run ruff format .
 
-# qdrant data manipulation
+# qdrant include/data manipulation
 load_qdrant_locations:
-	@uv run -m src.qdrant.cli.loader --source 'data/fs_location.parquet' --collection 'tripadvisor_locations' --embedding_column 'location_text_nlp'
+	@uv run -m src.qdrant.cli.loader --source 'include/data/fs_location.parquet' --collection 'tripadvisor_locations' --embedding_column 'location_text_nlp'
 
 load_qdrant_geolocations:
-	@uv run -m src.qdrant.cli.loader --source 'data/fs_geolocation.parquet' --collection 'tripadvisor_geolocations' --embedding_column 'geolocation_text_nlp'
+	@uv run -m src.qdrant.cli.loader --source 'include/data/fs_geolocation.parquet' --collection 'tripadvisor_geolocations' --embedding_column 'geolocation_text_nlp'
 
 load_qdrant:
 	@make load_qdrant_locations

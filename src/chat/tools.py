@@ -118,7 +118,7 @@ def enrich_restaurant_recommendations(
         query_result = bigquery_client.fetch_bigquery_as_list(query)
     elif feature_storage_mode == "local":
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        data_path = os.path.join(project_root, "data", "fs_location.parquet")
+        data_path = os.path.join(project_root, "include", "data", "fs_location.parquet")
         query_result = pd.read_parquet(data_path, engine="pyarrow")
         log.success(f"Loaded {len(query_result)} records from local storage.")
         query_result = query_result[query_result["location_id"].isin([int(loc) for loc in locations])].to_dict("records")
