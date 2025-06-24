@@ -6,7 +6,7 @@ import yaml
 
 from src.chat.chainlit import AskActionMessage
 from src.chat.utils import generate_conv_summary, generate_next_response, generate_streaming_response
-from src.helper.utils import encode_b64_string, get_admin_account, get_config_file, get_display_name
+from src.helper.utils import encode_b64_string, get_admin_account, get_config_file, get_display_name, normalize_weights
 from src.main import get_chat_settings, init_user_session, remove_next_response_actions
 
 
@@ -192,7 +192,7 @@ async def on_chat_end():
 async def update_preferences(selected_score: str):
     config = cl.user_session.get("config")
     username = cl.user_session.get("username")
-    prefs = cl.user_session.get("user_preferences", {})
+    prefs: dict = cl.user_session.get("user_preferences", {})
     s3_client = cl.user_session.get("s3_client")
 
     messages = {
@@ -202,15 +202,15 @@ async def update_preferences(selected_score: str):
         "service_score": "Excellent! I'll find places with top service! 👑 What can I help you with?",
     }
 
-    prefs[selected_score] = max(prefs.get(selected_score, 0.5) + 0.1, 1.0)
+    all_scores = [value for key, value in prefs.items() if str(key).endswith("_score")]
+    tuned_selected_score = max(all_scores) + 0.15
+
+    prefs.update({selected_score: tuned_selected_score})
+    prefs = normalize_weights(prefs)
 
     config["preferences"][username] = prefs
     s3_client.write_object(get_config_file(), yaml.dump(config))
     cl.user_session.set("user_preferences", prefs)
 
     await asyncio.sleep(1.0)
-    await cl.Message(
-        content=messages.get(selected_score, "Preferences updated successfully!"),
-        type="system_message",
-    ).send()
-    return prefs
+    return {key: value for key, value in prefs.items() if key in messages.keys()}

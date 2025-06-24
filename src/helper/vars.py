@@ -3,7 +3,7 @@ import os
 CANDIDATE_LIMIT = 500
 FEATURE_STORAGE_MODE = "local"
 CONFIG_FILE = "secret.yaml"
-OPENAI_MODEL = "gpt-4.1-mini"
+OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_CONFIG = {"timeout": 60, "max_retries": 1, "api_key": os.environ.get("OPENAI_API_KEY")}
 WELCOME_MESSAGE = """
 Hi <b style='color: #f5145f'>{name}</b>, welcome to the Food Advisor Bot! 🤖

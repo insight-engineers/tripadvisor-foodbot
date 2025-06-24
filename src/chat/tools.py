@@ -118,7 +118,7 @@ def enrich_restaurant_recommendations(
         query_result = bigquery_client.fetch_bigquery_as_list(query)
     elif feature_storage_mode == "local":
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        data_path = os.path.join(project_root, "data", "fs_location.parquet")
+        data_path = os.path.join(project_root, "include", "data", "fs_location.parquet")
         query_result = pd.read_parquet(data_path, engine="pyarrow")
         log.success(f"Loaded {len(query_result)} records from local storage.")
         query_result = query_result[query_result["location_id"].isin([int(loc) for loc in locations])].to_dict("records")
@@ -205,22 +205,6 @@ def enrich_restaurant_recommendations(
     return restaurant_output
 
 
-def candidate_generation(
-    kwargs_dict: Dict[str, Any] = None,
-) -> int:
-    """
-    Always use this function ONCE before scoring_and_ranking to get number of candidates.
-    """
-    log.info("Generating candidate limit for the chatbot")
-    candidate_limit = get_candidate_limit()
-
-    if not isinstance(candidate_limit, int) or candidate_limit <= 0:
-        log.error(f"Invalid candidate limit: {candidate_limit}. Must be a positive integer.")
-        raise ValueError("Candidate limit must be a positive integer.")
-
-    return {"candidate_limit": candidate_limit, "message": "Candidate sets are generated successfully!"}
-
-
 scoring_and_ranking_tool = FunctionTool.from_defaults(
     fn=scoring_and_ranking,
     return_direct=False,
@@ -229,4 +213,3 @@ enrich_restaurant_recommendations_tool = FunctionTool.from_defaults(
     fn=enrich_restaurant_recommendations,
     return_direct=True,
 )
-candidate_generation_tool = FunctionTool.from_defaults(fn=candidate_generation, return_direct=False)

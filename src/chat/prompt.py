@@ -68,4 +68,6 @@ Your task is to suggest 3 engaging follow-up responses based on the chat history
 
 ## Chat History
 {chat_history}
+
+## Example Suggestions
 """

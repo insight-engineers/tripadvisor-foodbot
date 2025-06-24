@@ -103,6 +103,7 @@ def build_electre_iii(
         net_cred = outranking.sum(axis=1) - outranking.sum(axis=0)
         dataframe["electre_score"] = net_cred
         dataframe["electre_rank"] = rankdata(-net_cred, method="min")
+        dataframe = dataframe.sort_values(by="electre_rank").reset_index(drop=True)
         return dataframe
     except Exception as e:
         print(f"Error in build_electre_iii: {e}")
