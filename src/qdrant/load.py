@@ -1,13 +1,17 @@
 import uuid
+import warnings
 
 import pandas as pd
 from fastembed import TextEmbedding
 from loguru import logger as log
 from qdrant_client.models import PointStruct
+from tqdm.rich import tqdm
 
 from src.bigquery.handler import BigQueryHandler
 from src.helper.utils import get_feature_storage_mode
 from src.qdrant.base import QdrantBase
+
+warnings.filterwarnings("ignore")
 
 
 class QdrantLoader(QdrantBase):
@@ -38,7 +42,12 @@ class QdrantLoader(QdrantBase):
 
         texts = df[self.embedding_column].dropna().astype(str).tolist()
         log.info(f"Embedding {len(texts)} records...")
-        vectors = list(self.embedder.embed(documents=texts, parallel=0))
+        batch_size = 64
+        vectors = []
+        for i in tqdm(range(0, len(texts), batch_size), desc="Embedding"):
+            batch = texts[i : i + batch_size]
+            batch_vectors = list(self.embedder.embed(batch, parallel=0))
+            vectors.extend(batch_vectors)
         log.info("Embedding complete.")
 
         payloads = df.to_dict(orient="records")

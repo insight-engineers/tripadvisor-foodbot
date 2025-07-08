@@ -17,7 +17,7 @@ from src.ranker.electre_iii import build_electre_iii
 from src.ranker.scoring import compute_distance_score, compute_normalized_criterion_score
 
 
-def scoring_and_ranking(
+def candidate_generation_and_ranking(
     english_natural_query: str,
     location_natural_query: str = "",
     city_filter: Literal["Ha Noi", "Ho Chi Minh", "Whatever"] = "Whatever",
@@ -81,8 +81,8 @@ def scoring_and_ranking(
         user_preferences["distance_score"] = 0.25
         thresholds["distance_score"] = {"q": 0.05, "p": 0.10, "v": 0.20}
 
-    user_preferences["query_matching_score"] = 0.5
     user_preferences = {key: value for key, value in user_preferences.items() if key in thresholds and isinstance(value, (int, float))}
+    user_preferences["query_matching_score"] = max(user_preferences.values()) * 2
     user_preferences = normalize_weights(user_preferences)
     log.info(f"Ranking restaurants using ELECTRE III with normalized user preferences: {user_preferences}")
     location_with_electre_rank = build_electre_iii(locations_with_score, user_preferences, thresholds)
@@ -205,8 +205,8 @@ def enrich_restaurant_recommendations(
     return restaurant_output
 
 
-scoring_and_ranking_tool = FunctionTool.from_defaults(
-    fn=scoring_and_ranking,
+candidate_generation_and_ranking_tool = FunctionTool.from_defaults(
+    fn=candidate_generation_and_ranking,
     return_direct=False,
 )
 enrich_restaurant_recommendations_tool = FunctionTool.from_defaults(

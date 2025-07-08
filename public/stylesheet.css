@@ -10,16 +10,12 @@
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 16px;
-    background: none;
+    background-color: rgb(252, 252, 252);
     backdrop-filter: blur(10px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-#message-composer:hover {
-    border-color: #f5145f;
-    box-shadow: 0 10px 40px rgba(245, 20, 95, 0.15), 
-                0 4px 16px rgba(100, 100, 111, 0.3);
-    transform: translateY(-3px);
+    /* above all other elements */
+    position: relative;
+    z-index: 10;
 }
 
 #message-composer:focus-within {
@@ -41,7 +37,7 @@
 
 #step-update_preferences,
 #step-candidate_generation,
-#step-scoring_and_ranking,
+#step-candidate_generation_and_ranking,
 #step-enrich_restaurant_recommendations {
     display: inline-flex;
     align-items: center;
@@ -50,7 +46,7 @@
     font-size: 14px;
     color: #f5145f;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 4px;
     padding: 4px 16px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -59,7 +55,7 @@
 
 #step-update_preferences:hover,
 #step-candidate_generation:hover,
-#step-scoring_and_ranking:hover,
+#step-candidate_generation_and_ranking:hover,
 #step-enrich_restaurant_recommendations:hover {
     border-color: #f65087;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -67,7 +63,7 @@
 
 #step-update_preferences::before,
 #step-candidate_generation::before,
-#step-scoring_and_ranking::before,
+#step-candidate_generation_and_ranking::before,
 #step-enrich_restaurant_recommendations::before {
     content: "●";
     margin-right: 8px;

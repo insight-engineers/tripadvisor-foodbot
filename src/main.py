@@ -11,7 +11,7 @@ from llama_index.core.storage.chat_store import SimpleChatStore
 from src.chat.agent import ParseParamsAgent
 from src.chat.chainlit import ChainlitStatusCallback
 from src.chat.client import agent_llm_model
-from src.chat.tools import enrich_restaurant_recommendations_tool, scoring_and_ranking_tool
+from src.chat.tools import candidate_generation_and_ranking_tool, enrich_restaurant_recommendations_tool
 from src.helper.utils import get_config_file, get_display_name, get_welcome_message
 from src.s3.client import S3Client
 
@@ -41,7 +41,7 @@ def generate_foodbot_agent(
     try:
         agent_kwargs = {
             "tools": [
-                scoring_and_ranking_tool,
+                candidate_generation_and_ranking_tool,
                 enrich_restaurant_recommendations_tool,
             ],
             "llm": agent_llm_model,

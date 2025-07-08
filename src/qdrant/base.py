@@ -21,7 +21,7 @@ class QdrantBase(ABC):
 
         if not qdrant_api_url or not qdrant_api_key:
             self.qdrant_api_url = os.getenv("QDRANT_API_URL")
-            self.qdrant_api_key = os.getenv("QDRANT_API_KEY")
+            self.qdrant_api_key = os.getenv("QDRANT__SERVICE__API_KEY")
         else:
             self.qdrant_api_url = qdrant_api_url
             self.qdrant_api_key = qdrant_api_key

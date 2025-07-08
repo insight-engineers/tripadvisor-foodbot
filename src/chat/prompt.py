@@ -61,13 +61,16 @@ Your task is to suggest 3 engaging follow-up responses based on the chat history
 - Your role will be 'user', and you will generate responses as if you were the user.
 - Response should be the statement, and will provide the agent with more information about the user's preferences.
 - Each response should be short (from 8 to 12 words), and support the agent to find the best restaurant for the user.
+- If last message is meeting the user's query, you can suggest a follow-up question like changing other cuisine or dining style preferences.
 - Responses should support the agent enrich information about these fields: (just randomly pick and free style)
    + Cuisine type (Bun Bo, Pho, Korean BBQ, French, etc.)
    + Dining style (casual, fine dining, street food…)
-   + Activy after the meal (e.g. going to a quite bar with live music, or going to a karaoke bar, etc.)
+
+## Example Suggestions
+- I prefer a cozy Korean BBQ place with good service at Ho Chi Minh City.
+- Maybe I want a nice Pho restaurant in Ha Noi with good price and service.
+- Some fine dining French cuisine in Ho Chi Minh City with a nice view, please!
 
 ## Chat History
 {chat_history}
-
-## Example Suggestions
 """

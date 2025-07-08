@@ -92,20 +92,26 @@ async def on_message(message: cl.Message):
         # -- Generate conversation summary and update chat title --
         cl.user_session.set("next_response_actions", [])
         thread_data = await cl_data._data_layer.get_thread(message.thread_id)
-        message_history = [
-            {"content": step["output"][:500], "role": "user" if step.get("type") == "user_message" else "assistant"}
-            for step in thread_data["steps"][1:]  # Skip the first step which is the system message
-            if step.get("type") in ["user_message", "assistant_message"]
-        ]
+
+        msg = cl.Message(content="", author="assistant")
+        async_response = await cl.make_async(agent.params_chat)(message.content, **params_chat)
+        for chunk in generate_streaming_response(async_response, 0.025):
+            await msg.stream_token(chunk)
+
+        await msg.update()
+
+        message_history = (
+            [
+                {"content": step["output"][:500], "role": "user" if step.get("type") == "user_message" else "assistant"}
+                for step in thread_data["steps"][1:]  # Skip the first step which is the system message
+                if step.get("type") in ["user_message", "assistant_message"]
+            ]
+            + [{"content": msg.content[:500], "role": "assistant"}]
+        )
 
         if len(message_history) > 0:
             print(f"Actual conversation: {message_history}")
             conversation_title = len(thread_data["name"].split())
-
-            if conversation_title < 2 and len(message_history) > 1:
-                conv_summary = await generate_conv_summary(message_history)
-                chat_title = conv_summary.title().replace(".", "")
-                await cl.context.emitter.init_thread(chat_title)
 
             next_response = await generate_next_response(message_history)
             next_response_actions = [
@@ -118,13 +124,13 @@ async def on_message(message: cl.Message):
             ]
 
             cl.user_session.set("next_response_actions", next_response_actions)
+            msg.actions = next_response_actions
+            await msg.update()
 
-        msg = cl.Message(content="", author="assistant", actions=cl.user_session.get("next_response_actions"))
-        async_response = await cl.make_async(agent.params_chat)(message.content, **params_chat)
-        for chunk in generate_streaming_response(async_response, 0.025):
-            await msg.stream_token(chunk)
-
-        await msg.update()
+            if conversation_title < 2 and len(message_history) > 1:
+                conv_summary = await generate_conv_summary(message_history)
+                chat_title = conv_summary.title().replace(".", "")
+                await cl.context.emitter.init_thread(chat_title)
 
     except Exception as e:
         await cl.Message(content=f"Error processing message: {e}", author="assistant").send()
@@ -136,12 +142,17 @@ async def handle_next_response_action(action: cl.Action):
     Handle the next response action when the user selects a response.
     This function updates the chat with the selected response and sends a follow-up message.
     """
+
+    @cl.step(type="run", name="process_user_message")
+    async def process_user_message(user_message: cl.Message):
+        await on_message(user_message)
+
     user_response = action.payload.get("user_response", "")
     user_message = cl.Message(content=user_response, author="user", type="user_message")
 
     await remove_next_response_actions()
     await user_message.send()
-    await on_message(user_message)
+    await process_user_message(user_message)
 
 
 @cl.on_settings_update

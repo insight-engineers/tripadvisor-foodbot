@@ -14,13 +14,13 @@ async_core_llm_model = AsyncOpenAI(**OPENAI_CONFIG)
 
 qdrant_client_location = QdrantQuery(
     qdrant_api_url=os.environ.get("QDRANT_API_URL"),
-    qdrant_api_key=os.environ.get("QDRANT_API_KEY"),
+    qdrant_api_key=os.environ.get("QDRANT__SERVICE__API_KEY"),
     collection_name="tripadvisor_locations",
 )
 
 qdrant_client_geolocation = QdrantQuery(
     qdrant_api_url=os.environ.get("QDRANT_API_URL"),
-    qdrant_api_key=os.environ.get("QDRANT_API_KEY"),
+    qdrant_api_key=os.environ.get("QDRANT__SERVICE__API_KEY"),
     collection_name="tripadvisor_geolocations",
 )
 
