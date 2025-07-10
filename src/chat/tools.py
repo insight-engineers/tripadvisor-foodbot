@@ -104,7 +104,7 @@ def enrich_restaurant_recommendations(
 ) -> str:
     """
     Enrich the restaurant recommendations with more information.
-    TRUST the previous function, MUST get full ids.
+    TRUST the previous function, but you can exclude some locations if they are too out of context, acceptable if it's partially relevant.
     ONLY use this function at the end of the pipeline.
     """
     feature_storage_mode = get_feature_storage_mode()
@@ -166,8 +166,10 @@ def enrich_restaurant_recommendations(
             restaurants=[],
             end_description_with_follow_up="Unable to generate recommendations at this time.",
         ).model_dump()
+
         if completion.choices[0].message.parsed:
-            restaurant_description = completion.choices[0].message.parsed.model_dump()
+            restaurant_parsed = completion.choices[0].message.parsed  # type: RestaurantsFinalized
+            restaurant_description = restaurant_parsed.model_dump()
         elif completion.choices[0].message.refusal:
             restaurant_description = unable_response
         else:

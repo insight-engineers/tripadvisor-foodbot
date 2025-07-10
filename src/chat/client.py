@@ -5,7 +5,7 @@ from openai import AsyncOpenAI
 from openai import OpenAI as CoreOpenAI
 
 from src.bigquery.handler import BigQueryHandler
-from src.helper.vars import OPENAI_CONFIG, OPENAI_MODEL
+from src.helper.vars import FEATURE_STORAGE_MODE, OPENAI_CONFIG, OPENAI_MODEL
 from src.qdrant.query import QdrantQuery
 
 agent_llm_model = AgentOpenAI(**OPENAI_CONFIG, model=OPENAI_MODEL, streaming=False)
@@ -24,7 +24,10 @@ qdrant_client_geolocation = QdrantQuery(
     collection_name="tripadvisor_geolocations",
 )
 
-bigquery_client = BigQueryHandler(
-    project_id="tripadvisor-recommendations",
-    credentials_path=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sa.json"),
-)
+if FEATURE_STORAGE_MODE == "local":
+    bigquery_client = None
+else:
+    bigquery_client = BigQueryHandler(
+        project_id="tripadvisor-recommendations",
+        credentials_path=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sa.json"),
+    )

@@ -13,7 +13,6 @@ db:
 	@docker compose up -d
 	@npx prisma migrate deploy
 	@npx prisma db push
-	@npx prisma studio
 
 format:
 	@uv run ruff check --fix .
