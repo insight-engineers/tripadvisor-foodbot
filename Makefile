@@ -16,7 +16,7 @@ db:
 
 format:
 	@npx prettier --write .
-	@uv run ruff check --fix .
+	@uv run ruff check --fix --select I,RUF022 .
 	@uv run ruff format .
 
 # qdrant include/data manipulation
