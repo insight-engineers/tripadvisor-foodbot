@@ -1,4 +1,3 @@
-import math
 import os
 from typing import Annotated, Any, Dict, List, Literal
 
@@ -8,91 +7,33 @@ from llama_index.core.tools import FunctionTool
 from loguru import logger as log
 from tabulate import tabulate
 
-from chat.models import RestaurantsFinalized
-from src.chat.client import bigquery_client, core_llm_model, qdrant_client_geolocation, qdrant_client_location
+from src.chat.client import bigquery_client, core_llm_model
+from src.chat.models import RestaurantsFinalized
 from src.chat.prompt import ENRICH_PROMPT
-from src.helper.utils import encode_url, get_candidate_limit, get_feature_storage_mode, normalize_weights
-from src.helper.vars import OPENAI_MODEL
-from src.ranker.electre_iii import build_electre_iii
-from src.ranker.scoring import compute_distance_score, compute_normalized_criterion_score
+from src.helper.utils import encode_url, get_feature_storage_mode
+from src.helper.vars import COSINE_THRESHOLD, OPENAI_MODEL, TOP_K
+from src.ranker.workflow import build_mcdm_workflow
 
 
 def candidate_generation_and_ranking(
     english_natural_query: str,
-    location_natural_query: str = "",
     city_filter: Literal["Ha Noi", "Ho Chi Minh", "Whatever"] = "Whatever",
     kwargs_dict: Dict[str, Any] = None,
 ) -> pd.DataFrame:
     """
     Retrieves the restaurants that match the user's query.
     The english_natural_query should be a short and concise information containing only the key information (remove speech words or noise, verbs, etc).
-    If key information is missing (e.g., city), prompt the user for clarification about location preference, like at Ha Noi or Ho Chi Minh City, near which ward or district, etc.
-    location_natural_query can be skipped input if the user has no preference about the location other than the city.
+    If key information is missing (e.g., city), prompt the user for clarification about location preference, like at Ha Noi or Ho Chi Minh City, etc.
     """
-    log.info("Candidate generation using Qdrant")
-    candidate_limit = get_candidate_limit()
-    top_k: int = max(1, math.ceil(candidate_limit / 100))
+    cosine_threshold: float = COSINE_THRESHOLD
+    top_k: int = TOP_K
     decoded_query = unidecode.unidecode(english_natural_query)
 
-    search_restaurants_kwargs = {"natural_query": decoded_query}
-    search_location_kwargs = {"natural_query": location_natural_query, "limit": 1}
+    location_top_k = build_mcdm_workflow(top_k, city_filter, cosine_threshold, decoded_query, kwargs_dict)
 
-    if city_filter in ["Ha Noi", "Ho Chi Minh"]:
-        search_restaurants_kwargs["city"] = city_filter
-        search_location_kwargs["city"] = city_filter
-
-    locations_with_query_matching_score = qdrant_client_location.search_restaurants(**search_restaurants_kwargs, limit=candidate_limit)
-    log.info("Successfully retrieved candidate restaurants from Qdrant with cosine similarity score")
-
-    criteria = ["food", "ambience", "price", "service"]
-    locations_with_score = compute_normalized_criterion_score(locations_with_query_matching_score, criteria)
-
-    log.success("Successfully computed normalized criterion scores")
-    log.info("Checking user preferences and distance preference")
-    user_preferences = kwargs_dict.get("user_preferences", {})
-    distance_preference = user_preferences.get("distance_preference", False)
-    log.info(f"User preferences: {user_preferences}")
-    log.info(f"Distance preference: {distance_preference}")
-
-    thresholds = {
-        "food_score": {"q": 0.05, "p": 0.10, "v": 0.20},
-        "ambience_score": {"q": 0.05, "p": 0.10, "v": 0.20},
-        "price_score": {"q": 0.05, "p": 0.10, "v": 0.20},
-        "service_score": {"q": 0.05, "p": 0.10, "v": 0.20},
-        "query_matching_score": {"q": 0.05, "p": 0.10, "v": 0.20},
-    }
-
-    if distance_preference:
-        log.info("User has distance preference. Get user latitude and longitude")
-
-        query_geolocation = qdrant_client_geolocation.search_lat_long(**search_location_kwargs)
-        log.success(f"Successfully retrieved user geolocation from Qdrant: {query_geolocation}")
-
-        query_latitude = query_geolocation[0].get("latitude")
-        query_longitude = query_geolocation[0].get("longitude")
-
-        log.info("Computing distance score for restaurants")
-        locations_with_score = compute_distance_score(
-            locations_with_score,
-            user_preferences.get("distance_km"),
-            user_lat=query_latitude,
-            user_long=query_longitude,
-        )
-        user_preferences["distance_score"] = 0.25
-        thresholds["distance_score"] = {"q": 0.05, "p": 0.10, "v": 0.20}
-
-    user_preferences = {key: value for key, value in user_preferences.items() if key in thresholds and isinstance(value, (int, float))}
-    user_preferences["query_matching_score"] = max(user_preferences.values()) * 2
-    user_preferences = normalize_weights(user_preferences)
-    log.info(f"Ranking restaurants using ELECTRE III with normalized user preferences: {user_preferences}")
-    location_with_electre_rank = build_electre_iii(locations_with_score, user_preferences, thresholds)
-
-    log.success(f"Successfully ranked restaurants using ELECTRE III. Get {top_k} recommendations")
-    location_top_k = location_with_electre_rank.head(top_k)
-    score_columns = [col for col in location_with_electre_rank.columns if col.endswith("_score")]
-    selected_columns = ["location_id", "location_name"] + score_columns
-    location_top_k = location_top_k.sort_values(by="electre_rank").reset_index(drop=True)
-    location_top_k = location_top_k[selected_columns].drop(columns=["electre_score"], errors="ignore")
+    if len(location_top_k) < top_k:
+        cosine_threshold -= 0.05
+        location_top_k = build_mcdm_workflow(top_k, city_filter, cosine_threshold, decoded_query, kwargs_dict)
 
     return tabulate(location_top_k, headers="keys", tablefmt="github")
 
@@ -124,7 +65,7 @@ def enrich_restaurant_recommendations(
         query_result = query_result[query_result["location_id"].isin([int(loc) for loc in locations])].to_dict("records")
         log.info(f"Filtered records to {len(query_result)} based on provided location IDs.")
     else:
-        return "Please contact developer to fix the feature storage mode."
+        return "Please contact deve`loper to fix the feature storage mode."
 
     if not query_result:
         return "No restaurant recommendations found. Please try again with a different query."
@@ -192,8 +133,8 @@ def enrich_restaurant_recommendations(
                             (f"- 📍 {loc.get('address', '')}\n" if "address" in loc else ""),
                             (f"- ⭐️ {loc.get('location_overall_rate')}\n" if "location_overall_rate" in loc else ""),
                             (f"- 💰 Price: {loc.get('price_range')}\n" if "price_range" in loc and loc.get("price_range") != "Not Defined" else ""),
-                            (f"- [Google Maps]({encode_url(loc.get('location_map', ''))})\n" if "location_map" in loc else ""),
-                            (f"- [Restaurant Website]({encode_url(loc.get('location_url', ''))})\n" if "location_url" in loc else ""),
+                            (f"- [🗺️ Google Maps]({encode_url(loc.get('location_map', ''))})\n" if "location_map" in loc else ""),
+                            (f"- [🌐 Restaurant Website]({encode_url(loc.get('location_url', ''))})\n" if "location_url" in loc else ""),
                             (f"![{loc.get('location_name', '')}]({loc.get('image_url', '')}?w=500&h=300&s=1)\n" if "image_url" in loc else ""),
                         ]
                     )

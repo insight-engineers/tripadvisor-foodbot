@@ -51,9 +51,8 @@ dispatcher = instrument.get_dispatcher(__name__)
 class ParseParamsAgent(FunctionCallingAgent):
     """Override chat method to parse and forward custom parameters to tool calls."""
 
-    @classmethod
+    @staticmethod
     def from_tools(
-        cls,
         tools: Optional[List[BaseTool]] = None,
         tool_retriever: Optional[ObjectRetriever[BaseTool]] = None,
         llm: Optional[FunctionCallingLLM] = None,
@@ -95,7 +94,7 @@ class ParseParamsAgent(FunctionCallingAgent):
             allow_parallel_tool_calls=allow_parallel_tool_calls,
         )
 
-        return cls(
+        return ParseParamsAgent(
             agent_worker=agent_worker,
             memory=memory,
             chat_history=chat_history,

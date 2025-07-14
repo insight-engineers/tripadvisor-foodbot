@@ -1,6 +1,8 @@
 import os
 
-CANDIDATE_LIMIT = 500
+TOP_K = 5
+COSINE_THRESHOLD = 0.74
+EMBEDDER_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 FEATURE_STORAGE_MODE = "local"
 CONFIG_FILE = "secret.yaml"
 OPENAI_MODEL = "gpt-4o-mini"

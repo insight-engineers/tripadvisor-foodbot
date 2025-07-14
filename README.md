@@ -37,12 +37,12 @@ A next-generation restaurant recommendation system implementing **RAG (Retrieval
 - **ELECTRE III** algorithm for restaurant ranking
 - Custom concordance/discordance thresholds
 - Multi-criteria evaluation:
-    - Food quality (delicious, fresh, etc.)
-    - Price sensitivity (affordable, expensive, etc.)
-    - Ambience (quiet, cozy, etc.)
-    - Service (friendly, fast, polite, etc.)
-    - Distance to user location (using distance mapping)
-    - Query matching (using `cosine similarity`)
+  - Food quality (delicious, fresh, etc.)
+  - Price sensitivity (affordable, expensive, etc.)
+  - Ambience (quiet, cozy, etc.)
+  - Service (friendly, fast, polite, etc.)
+  - Distance to user location (using distance mapping)
+  - Query matching (using `cosine similarity`)
 
 > Pre-processing before ranking: Convert review sentiment (positive, negative, etc.) to numerical scores, then apply ELECTRE III to rank restaurants based on user preferences.
 
@@ -70,8 +70,8 @@ src/
 
 - LlamaIndex RAG implementation
 - Custom tools for:
-    - `candidate_generation_and_ranking`: generate candidate restaurants and rank them using MCDA
-    - `enrich_restaurant_recommendations`: enrich recommendations with more information and generate the final natural response
+  - `candidate_generation_and_ranking`: generate candidate restaurants and rank them using MCDA
+  - `enrich_restaurant_recommendations`: enrich recommendations with more information and generate the final natural response
 - Streaming response handlers for tool callbacks
 - Context management with chat history
 
@@ -133,44 +133,49 @@ sequenceDiagram
    ```bash
    uv sync
    ```
+
 1. **Set up environment variables**
 
-    Copy the `.env.example` file to `.env` and fill in the required values:
+   Copy the `.env.example` file to `.env` and fill in the required values:
 
    ```bash
    cp .env.example .env
    ```
 
-    Change the `OPENAI_API_KEY` to your OpenAI API key.
+   Change the `OPENAI_API_KEY` to your OpenAI API key.
+
 1. **Start containers (optional - ignore if using remote services)**
 
-    If you want to use local Qdrant and S3, you can start the containers using `docker-compose`:
+   If you want to use local Qdrant and S3, you can start the containers using `docker-compose`:
 
    ```bash
    docker compose up -d
    ```
 
-    This will start Qdrant and S3-compatible storage services locally (MinIO). Make sure you have Docker installed and running. If you want to use remote services, you can skip this step.
+   This will start Qdrant and S3-compatible storage services locally (MinIO). Make sure you have Docker installed and running. If you want to use remote services, you can skip this step.
+
 1. **Initialize Qdrant collections**
 
-    If you are using Qdrant, you need to initialize the collections. You can do this by running the following command:
+   If you are using Qdrant, you need to initialize the collections. You can do this by running the following command:
 
    ```bash
    make load_qdrant
    ```
 
-    This will create the necessary collections in Qdrant and load the initial data.
+   This will create the necessary collections in Qdrant and load the initial data.
+
 1. **Initialize Chatbot Schema (Prisma)**
 
-    Because we are using Prisma for the storage of the chatbot schema, you need to run the following command to generate the Prisma client and apply the schema migrations:
+   Because we are using Prisma for the storage of the chatbot schema, you need to run the following command to generate the Prisma client and apply the schema migrations:
 
    ```bash
    make db
    ```
 
-    This will generate the Prisma client and apply the schema migrations.
+   This will generate the Prisma client and apply the schema migrations.
 
    > Change the `DATABASE_URL` in the `.env` file to your database connection string if you are using a remote database.
+
 1. **Start development server**
 
    ```bash

@@ -6,12 +6,16 @@ from typing import Literal, Tuple
 import requests
 from dotenv import load_dotenv
 
-from src.helper.vars import CANDIDATE_LIMIT, CONFIG_FILE, FEATURE_STORAGE_MODE, WELCOME_MESSAGE
+from src.helper.vars import CONFIG_FILE, FEATURE_STORAGE_MODE, WELCOME_MESSAGE
 
 
-def get_candidate_limit() -> int:
-    """Returns the candidate limit for the chatbot."""
-    return int(CANDIDATE_LIMIT)
+def get_central_location_coords(city_filter: Literal["Ha Noi", "Ho Chi Minh"]) -> Tuple[float, float]:
+    if city_filter == "Ho Chi Minh":
+        return 10.8231, 106.6297
+    elif city_filter == "Ha Noi":
+        return 21.0278, 105.8412
+    else:
+        raise ValueError(f"Invalid city filter: {city_filter}")
 
 
 def load_dotenv_file(dotenv_path):

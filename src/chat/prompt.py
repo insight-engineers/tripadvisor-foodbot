@@ -39,7 +39,7 @@ Task: help users discover top dining spots sourced from TripAdvisor and local in
    - Include:
       + Cuisine type (Bun Bo, Pho, Korean BBQ, French, etc.)
       + Dining style (casual, fine dining, street food…)
-      + Location/district/ward preference
+      + Location preference
 """
 
 CONV_SUMMARY_PROMPT = """

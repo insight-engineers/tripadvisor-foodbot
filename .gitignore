@@ -8,6 +8,7 @@ prisma/migrations/
 node_modules
 build
 npm-debug.log
+.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

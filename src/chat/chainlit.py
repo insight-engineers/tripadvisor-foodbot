@@ -1,5 +1,7 @@
 from typing import List, Union, cast
 
+from literalai.helper import utc_now
+
 from chainlit import LlamaIndexCallbackHandler
 from chainlit.action import Action
 from chainlit.config import config
@@ -10,7 +12,6 @@ from chainlit.types import (
     AskActionResponse,
     AskActionSpec,
 )
-from literalai.helper import utc_now
 
 
 class ChainlitStatusCallback(LlamaIndexCallbackHandler):

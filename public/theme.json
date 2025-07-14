@@ -1,16 +1,55 @@
 {
-    "custom_fonts": [
-        "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-        "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
-    ],
-    "variables": {
-        "light": {
-            "--font-sans": "'Inter', sans-serif",
-            "--font-mono": "'JetBrains Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
-        },
-        "dark": {
-            "--font-sans": "'Inter', sans-serif",
-            "--font-mono": "'JetBrains Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
-        }
+  "custom_fonts": [
+    "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400..900;1,400..900&display=swap",
+    "https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+  ],
+  "variables": {
+    "light": {
+      "--background": "0 0% 100%",
+      "--foreground": "0 0% 5%",
+      "--card": "0 0% 100%",
+      "--card-foreground": "0 0% 5%",
+      "--popover": "0 0% 100%",
+      "--popover-foreground": "0 0% 5%",
+      "--primary": "270 90% 60%",
+      "--primary-foreground": "0 0% 100%",
+      "--secondary": "210 40% 96.1%",
+      "--secondary-foreground": "222.2 47.4% 11.2%",
+      "--muted": "0 0% 90%",
+      "--muted-foreground": "0 0% 36%",
+      "--accent": "0 0% 95%",
+      "--accent-foreground": "222.2 47.4% 11.2%",
+      "--destructive": "0 84.2% 60.2%",
+      "--destructive-foreground": "210 40% 98%",
+      "--border": "0 0% 90%",
+      "--input": "0 0% 90%",
+      "--ring": "270 90% 60%",
+      "--radius": "0.75rem",
+      "--font-sans": "'Inter', sans-serif",
+      "--font-mono": "'JetBrains Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
+    },
+    "dark": {
+      "--background": "0 0% 13%",
+      "--foreground": "0 0% 93%",
+      "--card": "0 0% 18%",
+      "--card-foreground": "210 40% 98%",
+      "--popover": "0 0% 18%",
+      "--popover-foreground": "210 40% 98%",
+      "--primary": "270 90% 60%",
+      "--primary-foreground": "0 0% 100%",
+      "--secondary": "0 0% 19%",
+      "--secondary-foreground": "210 40% 98%",
+      "--muted": "0 1% 26%",
+      "--muted-foreground": "0 0% 71%",
+      "--accent": "0 0% 26%",
+      "--accent-foreground": "210 40% 98%",
+      "--destructive": "0 62.8% 30.6%",
+      "--destructive-foreground": "210 40% 98%",
+      "--border": "0 1% 26%",
+      "--input": "0 1% 26%",
+      "--ring": "270 90% 60%",
+      "--font-sans": "'Inter', sans-serif",
+      "--font-mono": "'JetBrains Mono', Menlo, Monaco, Consolas, 'Courier New', monospace"
     }
+  }
 }

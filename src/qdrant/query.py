@@ -1,16 +1,16 @@
 import time
-from typing import Dict, List
 
 import pandas as pd
 from fastembed import TextEmbedding
 
+from src.helper.vars import EMBEDDER_MODEL_NAME
 from src.qdrant.base import QdrantBase
 
 
 class QdrantQuery(QdrantBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.embedder = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        self.embedder = TextEmbedding(model_name=EMBEDDER_MODEL_NAME)
         self.selected_columns = [
             "location_id",
             "location_name",
@@ -58,6 +58,7 @@ class QdrantQuery(QdrantBase):
         natural_query: str,
         city: str = None,
         limit: int = 10,
+        score_threshold: float = 0.5,
     ) -> pd.DataFrame:
         try:
             vector = list(self.embedder.embed([natural_query]))[0]
@@ -79,6 +80,7 @@ class QdrantQuery(QdrantBase):
                 limit=limit,
                 with_payload=True,
                 with_vectors=True,
+                score_threshold=score_threshold,
             )
 
             restaurant_list = [
@@ -92,36 +94,5 @@ class QdrantQuery(QdrantBase):
             return pd.DataFrame(restaurant_list)
         except Exception as e:
             raise RuntimeError(f"Error searching restaurants: {e}")
-        finally:
-            time.sleep(1.5)
-
-    def search_lat_long(self, natural_query: str, city: str = None, limit: int = 1) -> List[Dict[str, float]]:
-        try:
-            vector = list(self.embedder.embed([natural_query]))[0]
-            filters = []
-            if city:
-                filters.append({"key": "province_code", "match": {"value": city}})
-
-            query_filter = {"must": filters}
-            search_result = self.client.search(
-                collection_name=self.collection_name,
-                query_vector=vector,
-                query_filter=query_filter,
-                limit=limit,
-                with_payload=True,
-                with_vectors=True,
-            )
-
-            lat_long_list = [
-                {
-                    "latitude": hit.payload.get("latitude"),
-                    "longitude": hit.payload.get("longitude"),
-                }
-                for hit in search_result
-            ]
-
-            return lat_long_list
-        except Exception as e:
-            raise RuntimeError(f"Error searching latitude and longitude: {e}")
         finally:
             time.sleep(1.5)

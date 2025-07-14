@@ -1,115 +1,172 @@
 #root {
-    background-size: cover;
-    background-color: rgba(250, 250, 250, 0.9);
-    background-blend-mode: lighten;
+  background-size: cover;
+  background-color: rgba(255, 255, 255);
+  background-blend-mode: lighten;
 }
 
 #message-composer {
-    cursor: text;
-    box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 16px;
-    background-color: rgb(252, 252, 252);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* above all other elements */
-    position: relative;
-    z-index: 10;
+  cursor: text;
+  box-shadow:
+    0 0 0 1.5px hsla(270, 90%, 70%, 0.15),
+    0 6px 15px hsla(270, 90%, 70%, 0.15);
+  border: 1px solid hsl(240, 20%, 90%);
+  border-radius: 12px;
+  padding: 16px;
+  background-color: white;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 10;
 }
 
 #message-composer:focus-within {
-    border-color: #f5145f;
-    box-shadow: 0 0 0 3px rgba(245, 20, 95, 0.1),
-                0 12px 45px rgba(245, 20, 95, 0.2);
-    transform: translateY(-6px);
-    outline: none;
+  border-color: hsl(270, 90%, 60%);
+  box-shadow:
+    0 0 0 3px hsla(270, 90%, 60%, 0.15),
+    0 12px 45px hsla(270, 90%, 60%, 0.25);
+  transform: translateY(-6px);
+  outline: none;
 }
 
+#chat-submit {
+  background-image: linear-gradient(135deg, #ce9ffc 10%, #7367f0 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.watermark {
+  pointer-events: none;
+  opacity: 0;
+}
+
+div[data-sidebar="sidebar"] {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+div[data-step-type="user_message"] .bg-accent {
+  background-image: linear-gradient(135deg, #ce9ffc 10%, #7367f0 100%);
+  color: white;
+  font-weight: 500;
+  border-radius: 12px;
+}
+
+#chat-submit:hover {
+  scale: 1.05;
+}
 
 #chat-settings {
-    height: 65%;
+  height: 65%;
 }
 
-#theme-toggle, .undefined, .positive-feedback-off, .negative-feedback-off {
-    display: none !important;
+#theme-toggle,
+.undefined,
+.positive-feedback-off,
+.negative-feedback-off {
+  display: none !important;
 }
 
 #step-update_preferences,
 #step-candidate_generation,
 #step-candidate_generation_and_ranking,
 #step-enrich_restaurant_recommendations {
-    display: inline-flex;
-    align-items: center;
-    max-width:fit-content;
-    font-family: var(--font-mono);
-    font-size: 14px;
-    color: #f5145f;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    padding: 4px 16px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: inline-flex;
+  align-items: center;
+  max-width: fit-content;
+  font-size: 14px;
+  color: hsl(0, 0%, 0%);
+  border: 1px solid hsl(240, 20%, 90%);
+  border-radius: 6px;
+  padding: 4px 16px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #step-update_preferences:hover,
 #step-candidate_generation:hover,
 #step-candidate_generation_and_ranking:hover,
 #step-enrich_restaurant_recommendations:hover {
-    border-color: #f65087;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-color: hsl(270, 90%, 65%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 #step-update_preferences::before,
 #step-candidate_generation::before,
 #step-candidate_generation_and_ranking::before,
 #step-enrich_restaurant_recommendations::before {
-    content: "●";
-    margin-right: 8px;
-    color: #f5145f;
+  content: "●";
+  margin-right: 8px;
+  color: hsl(270, 90%, 60%);
 }
 
 #step-enrich_restaurant_recommendations::before {
-    color: #10b981;
-    animation: pulse 1.5s infinite;
+  color: #10b981;
+  animation: pulse 1.5s infinite;
 }
 
+.ai-message button {
+  display: inline-block;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+  white-space: nowrap;
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 1.5rem;
+}
+
+.ai-message button:hover {
+  background: rgb(230, 230, 230);
+}
+
+.ai-message button .truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 #assistant-card {
-    position: relative;
-        overflow: hidden;
-    }
+  position: relative;
+  overflow: hidden;
+}
 
 #assistant-card::before {
-    content: "";
-    position: absolute;
-    top: -10%;
-    left: -10%;
-    width: 120%;
-    height: 120%;
-    background: conic-gradient(transparent, rgba(245, 20, 95, 0.065),  rgba(185, 215, 255, 0.095), transparent);
-    animation: neonFloat 5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
-    filter: blur(85px);
-    z-index: 0;
+  content: "";
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: conic-gradient(
+    transparent,
+    hsla(270, 90%, 60%, 0.07),
+    hsla(250, 100%, 97%, 0.1),
+    transparent
+  );
+  animation: neonFloat 5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+  filter: blur(85px);
+  z-index: 0;
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes neonFloat {
-    0% {
-        transform: translateY(-10px) rotate(0deg);
-    }
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+  }
 
-    50% {
-        transform: translateY(-20px) rotate(180deg);
-    }
+  50% {
+    transform: translateY(-20px) rotate(180deg);
+  }
 
-    100% {
-        transform: translateY(0) rotate(360deg);
-    }
-    
+  100% {
+    transform: translateY(0) rotate(360deg);
+  }
 }

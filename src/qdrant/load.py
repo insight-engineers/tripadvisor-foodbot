@@ -9,6 +9,7 @@ from tqdm.rich import tqdm
 
 from src.bigquery.handler import BigQueryHandler
 from src.helper.utils import get_feature_storage_mode
+from src.helper.vars import EMBEDDER_MODEL_NAME
 from src.qdrant.base import QdrantBase
 
 warnings.filterwarnings("ignore")
@@ -25,7 +26,7 @@ class QdrantLoader(QdrantBase):
         else:
             log.warning("Using local storage mode, BigQuery client will not be initialized.")
             self.bigquery_client = None
-        self.embedder = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        self.embedder = TextEmbedding(model_name=EMBEDDER_MODEL_NAME)
 
     def load_data(self):
         log.info(f"Querying source: {self.source}")

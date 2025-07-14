@@ -1,17 +1,17 @@
+import yaml
+from literalai.helper import utc_now
+
 import chainlit as cl
 import chainlit.data as cl_data
 import chainlit.socket as cl_socket
-import yaml
 from chainlit.chat_context import chat_context
 from chainlit.config import config
 from chainlit.context import context
 from chainlit.types import MessagePayload
-from literalai.helper import utc_now
-
 from src.chat.chainlit import AskActionMessage
 from src.chat.utils import generate_conv_summary, generate_next_response, generate_streaming_response
+from src.core import get_chat_settings, init_user_session, remove_next_response_actions
 from src.helper.utils import encode_b64_string, get_admin_account, get_config_file, get_display_name, normalize_weights
-from src.main import get_chat_settings, init_user_session, remove_next_response_actions
 
 
 @cl.password_auth_callback
@@ -57,12 +57,12 @@ async def set_starters():
             message="I want to eat sushi that is fresh and delicious.",
         ),
         cl.Starter(
-            label="I want Taiwanese Hot Pot",
-            message="I want Taiwanese Hot Pot",
+            label="I want to eat Pho at Ho Chi Minh City",
+            message="I want to eat Pho at Ho Chi Minh City",
         ),
         cl.Starter(
-            label="I want to eat dim sum with fast service",
-            message="I want to eat dim sum with fast service",
+            label="I really love French fine dining with great service and a nice atmosphere.",
+            message="I really love French fine dining with great service and a nice atmosphere.",
         ),
     ]
 

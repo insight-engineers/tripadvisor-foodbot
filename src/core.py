@@ -1,13 +1,13 @@
 import os
 from typing import Literal, Optional
 
-import chainlit as cl
-import chainlit.input_widget as cliw
 import yaml
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.storage.chat_store import SimpleChatStore
 
+import chainlit as cl
+import chainlit.input_widget as cliw
 from src.chat.agent import ParseParamsAgent
 from src.chat.chainlit import ChainlitStatusCallback
 from src.chat.client import agent_llm_model
@@ -83,7 +83,7 @@ async def remove_next_response_actions():
     cl.user_session.set("next_response_actions", [])
 
     for action in next_response_actions:
-        await action.remove()
+        await action.remove() if action else None
 
 
 # -- Function to initialize user session and preferences --

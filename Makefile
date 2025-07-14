@@ -1,5 +1,5 @@
 .PHONY: run format load_qdrant_locations load_qdrant_geolocations load_qdrant
-export CHAINLIT_FILE_PATH := _chainlit.py
+export CHAINLIT_FILE_PATH := src/chainlit.py
 
 # development
 run:
@@ -15,15 +15,13 @@ db:
 	@npx prisma db push
 
 format:
+	@npx prettier --write .
 	@uv run ruff check --fix .
 	@uv run ruff format .
 
 # qdrant include/data manipulation
 load_qdrant_locations:
 	@uv run -m src.qdrant.cli.loader --source 'include/data/fs_location.parquet' --collection 'tripadvisor_locations' --embedding_column 'location_text_nlp'
-
-load_qdrant_geolocations:
-	@uv run -m src.qdrant.cli.loader --source 'include/data/fs_geolocation.parquet' --collection 'tripadvisor_geolocations' --embedding_column 'geolocation_text_nlp'
 
 load_qdrant:
 	@make load_qdrant_locations
