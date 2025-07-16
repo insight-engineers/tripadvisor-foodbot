@@ -115,7 +115,7 @@ div[data-step-type="user_message"] .bg-accent {
 }
 
 .ai-message button:hover {
-  background: rgb(230, 230, 230);
+  background: rgb(240, 240, 240);
 }
 
 .ai-message button .truncate {
